@@ -44,7 +44,7 @@ The `*PostgresTest` classes subclass the H2 tests and run them against embedded 
 
 ## Not run / not verified
 
-* **Real providers**: FCM, Twilio and SMTP were never called with real credentials; only fakes and a local mock server.
+* **Real providers**: FCM credentials were validated against Firebase (a fake device token was rejected as invalid, not unauthorised). SMTP: a real password-reset email was accepted by Gmail SMTP (no error logged; inbox delivery confirmed by the owner is pending). Twilio was only exercised against a local mock server.
 
 * **Docker (verified later the same day)**: `docker compose config` passed; `docker compose up --build` built the
   backend image, started PostgreSQL 16 and the backend, both reported `healthy`; against that stack a demo patient
