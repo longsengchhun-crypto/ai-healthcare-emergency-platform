@@ -14,8 +14,10 @@ import urllib.request
 WEB_DIR = sys.argv[1] if len(sys.argv) > 1 else "apps/mobile/build/web"
 PORT = int(sys.argv[2]) if len(sys.argv) > 2 else 8081
 BACKEND = "http://127.0.0.1:8080"
+# origin/referer are dropped: the browser sees one origin (this server), so the backend must not treat the
+# forwarded call as cross-origin and reject it against its CORS allow-list.
 HOP = {"connection", "keep-alive", "transfer-encoding", "te", "trailer", "upgrade", "proxy-authorization",
-       "proxy-authenticate", "host", "content-length"}
+       "proxy-authenticate", "host", "content-length", "origin", "referer"}
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
