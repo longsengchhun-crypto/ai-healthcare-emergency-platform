@@ -71,4 +71,4 @@ app:
   fcm:
     enabled: ${FCM_ENABLED:false}
   rate-limit:
-    auth-per-minute: 10
+    auth-per-minute: ${RATE_LIMIT_AUTH_PER_MINUTE:10}

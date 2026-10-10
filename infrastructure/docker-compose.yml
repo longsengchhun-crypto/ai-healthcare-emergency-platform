@@ -33,6 +33,8 @@ services:
       SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-}
       AI_PROVIDER: ${AI_PROVIDER:-deterministic-demo}
       DEV_LOG_RESET_TOKENS: ${DEV_LOG_RESET_TOKENS:-false}
+      RATE_LIMIT_AUTH_PER_MINUTE: ${RATE_LIMIT_AUTH_PER_MINUTE:-10}
+      FORWARD_HEADERS: ${FORWARD_HEADERS:-none}
       # Optional channels (see docs/INTEGRATIONS.md). Empty = disabled.
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}

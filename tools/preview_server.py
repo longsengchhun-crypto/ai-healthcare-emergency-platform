@@ -31,6 +31,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         for k, v in self.headers.items():
             if k.lower() not in HOP:
                 req.add_header(k, v)
+        req.add_header("X-Forwarded-For", self.client_address[0])  # real client, so limits are per device
         try:
             resp = urllib.request.urlopen(req, timeout=30)
         except urllib.error.HTTPError as e:
