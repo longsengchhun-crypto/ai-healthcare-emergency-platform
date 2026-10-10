@@ -12,6 +12,7 @@ import '../doctor_directory/discover_screens.dart';
 import '../emergency/emergency_controller.dart';
 import '../emergency/emergency_models.dart';
 import '../medications/medications_screen.dart';
+import '../vitals/vitals_screen.dart';
 import '../notifications/notifications_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -164,6 +165,52 @@ class HomeScreen extends ConsumerWidget {
 
                   // ---- emergency (quiet by default; red only when something is in progress)
                   _EmergencyStrip(state: emergency),
+                  const SizedBox(height: Gap.md),
+                  const VitalsHomeCard(),
+                  const SizedBox(height: Gap.sm),
+                  Surface(
+                    onTap: () => context.push('/medical-id'),
+                    padding: const EdgeInsets.all(Gap.md),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: p.redSoft,
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Icon(Icons.badge_outlined, color: p.red),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.t('អត្តសញ្ញាណសុខភាព', 'Medical ID'),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                context.t(
+                                  'ក្រុមឈាម ជំងឺអាលែហ្ស៊ី ថ្នាំ និងអ្នកត្រូវទាក់ទង',
+                                  'Blood group, allergies, medicines and who to call',
+                                ),
+                                style: TextStyle(
+                                  color: p.muted,
+                                  fontSize: 13,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right_rounded, color: p.muted),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: Gap.xl),
 
                   // ---- doctors

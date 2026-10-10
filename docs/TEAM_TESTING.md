@@ -33,6 +33,10 @@ Toggle language with the **ខ្មែរ | EN** switch.
 | 12 | Admin (dashboard): Audit log | Every action above is listed; denied attempts are marked |
 | 13 | Stop the network (airplane mode) → Discover | Last saved doctor list with an offline notice |
 | 14 | Patient: Emergency without internet | **"Request NOT confirmed"** with a call shortcut (never a fake success) |
+| 15 | Patient: Home → **Health readings** → Add reading → Blood pressure `150` / `95` | Saved; badge "Worth noting" and a plain-language note; chart shows the trend |
+| 16 | Same screen: add Blood pressure `80` / `120` | Refused: top number must be higher than the bottom |
+| 17 | Same screen: add Temperature `98.6` | Refused as impossible (it is a Fahrenheit value; the field is °C) |
+| 18 | Patient: Home → **Medical ID** | Name, age, blood group, allergies, medicines, contacts with a Call button; **Copy as text** works |
 
 ## What is intentionally NOT real
 Emergency requests go to an in-app demo queue (no ambulance). AI is rule-based. Doctors, hospitals and patients are
@@ -41,3 +45,11 @@ fictional and labelled "Sample / គំរូ". SMS/push/email only work if the 
 ## Report a problem
 Send: what you did, what you expected, what happened, a screenshot, device + browser, time (so it can be found in the
 audit log).
+
+## New in this version
+* **Health readings** (blood pressure, heart rate, blood sugar, oxygen, temperature, weight): trend chart, history,
+  delete, and a quiet heads-up when a value is outside the typical adult range. The ranges are general information,
+  not a diagnosis, and the screen says so. Only the signed-in patient can see or delete their own readings
+  (verified by tests, including that another patient gets a 404 and a doctor account gets a 403).
+* **Medical ID**: one readable card built only from what the patient already entered. It is shown to the patient;
+  it is **not** automatically transmitted to anyone.

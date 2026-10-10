@@ -19,7 +19,9 @@ import 'package:health_response/features/emergency/emergency_screen.dart';
 import 'package:health_response/features/medications/medications_screen.dart';
 import 'package:health_response/features/notifications/notifications_screen.dart';
 import 'package:health_response/features/patient_home/home_screen.dart';
+import 'package:health_response/features/profile/medical_id_screen.dart';
 import 'package:health_response/features/profile/profile_screen.dart';
+import 'package:health_response/features/vitals/vitals_screen.dart';
 
 class _FakeAuth extends AuthController {
   @override
@@ -213,6 +215,57 @@ Widget _app(Widget home) => ProviderScope(
       },
     ),
     emergencyHistoryProvider.overrideWith((ref) async => []),
+    profileProvider.overrideWith(
+      (ref) async => {
+        'fullName': 'ស៊ុន ចាន់ថា',
+        'dateOfBirth': '1991-06-14',
+        'bloodGroup': 'O+',
+        'allergies': 'ប៉េនីស៊ីលីន (Penicillin)',
+        'conditions': 'លើសសម្ពាធឈាម',
+      },
+    ),
+    contactsProvider.overrideWith(
+      (ref) async => [
+        {
+          'id': 'c1',
+          'name': 'ស៊ុន សុភា',
+          'relationship': 'ប្តី',
+          'phone': '+855 12 345 678',
+        },
+      ],
+    ),
+    medicationsProvider.overrideWith(
+      (ref) async => [
+        {
+          'id': 'm1',
+          'name': 'Amlodipine',
+          'dosage': '5 mg',
+          'source': 'PRESCRIPTION',
+        },
+      ],
+    ),
+    vitalsSummaryProvider.overrideWith((ref) async => []),
+    vitalsSeriesProvider.overrideWith((ref, type) async {
+      final now = DateTime.now();
+      final bp = [
+        for (var i = 0; i < 9; i++)
+          {
+            'id': 'v$i',
+            'type': 'BLOOD_PRESSURE',
+            'value1': [148, 142, 138, 135, 140, 132, 128, 131, 126][i],
+            'value2': [94, 92, 90, 88, 91, 86, 84, 85, 82][i],
+            'unit': 'mmHg',
+            'note': i == 0 ? 'ក្រោយអាហារព្រឹក' : null,
+            'measuredAt': now
+                .subtract(Duration(days: i * 3))
+                .toUtc()
+                .toIso8601String(),
+            'level': 'ATTENTION',
+            'code': 'BP_HIGH',
+          },
+      ];
+      return bp;
+    }),
     contactsProvider.overrideWith((ref) async => []),
     medicationsProvider.overrideWith(
       (ref) async => [
@@ -298,5 +351,14 @@ void main() {
   testWidgets(
     'medications',
     (t) => shot(t, 'medications_km', const MedicationsScreen(), english: false),
+  );
+  testWidgets('vitals', (t) => shot(t, 'vitals_km', const VitalsScreen()));
+  testWidgets(
+    'vitals english',
+    (t) => shot(t, 'vitals_en', const VitalsScreen(), english: true),
+  );
+  testWidgets(
+    'medical id',
+    (t) => shot(t, 'medical_id_km', const MedicalIdScreen()),
   );
 }

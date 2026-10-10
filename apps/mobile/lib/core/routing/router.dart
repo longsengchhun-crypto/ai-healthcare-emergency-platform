@@ -10,6 +10,8 @@ import '../../features/doctor_directory/discover_screens.dart';
 import '../../features/emergency/emergency_screen.dart';
 import '../../features/medical_records/records_screen.dart';
 import '../../features/medications/medications_screen.dart';
+import '../../features/profile/medical_id_screen.dart';
+import '../../features/vitals/vitals_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/patient_home/home_screen.dart';
@@ -165,6 +167,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             patientName: s.extra as String?,
           ),
         ),
+      ),
+      GoRoute(
+        path: '/vitals',
+        pageBuilder: (c, s) => _fade(s, const VitalsScreen()),
+      ),
+      GoRoute(
+        path: '/medical-id',
+        pageBuilder: (c, s) => _fade(s, const MedicalIdScreen()),
       ),
       GoRoute(
         path: '/medications',

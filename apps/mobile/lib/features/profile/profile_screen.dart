@@ -101,6 +101,16 @@ class ProfileScreen extends ConsumerWidget {
                     onTap: () => context.push('/profile/edit'),
                   ),
                   InfoRow(
+                    icon: Icons.badge_outlined,
+                    label: context.t('អត្តសញ្ញាណសុខភាព', 'Medical ID'),
+                    onTap: () => context.push('/medical-id'),
+                  ),
+                  InfoRow(
+                    icon: Icons.monitor_heart_rounded,
+                    label: context.t('ការវាស់សុខភាព', 'Health readings'),
+                    onTap: () => context.push('/vitals'),
+                  ),
+                  InfoRow(
                     icon: Icons.contacts_outlined,
                     label: context.t(
                       'អ្នកទាក់ទងសង្គ្រោះបន្ទាន់',
