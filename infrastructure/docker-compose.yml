@@ -1,0 +1,43 @@
+# Local development / demo stack (PostgreSQL + backend). Redis is intentionally not included: the backend
+# does not use it yet (rate limiting is in-memory, see docs/KNOWN_ISSUES.md).
+# Local development / demo stack. Secrets come from ../.env (copy .env.example). Never commit .env.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: healthplatform
+      POSTGRES_USER: healthapp
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U healthapp -d healthplatform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  backend:
+    build: ../backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/healthplatform
+      DB_USER: healthapp
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (>= 32 bytes)}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-}
+      AI_PROVIDER: ${AI_PROVIDER:-deterministic-demo}
+      DEV_LOG_RESET_TOKENS: ${DEV_LOG_RESET_TOKENS:-false}
+    volumes:
+      - documents:/data/private-documents
+    ports:
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  pgdata:
+  documents:

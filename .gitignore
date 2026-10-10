@@ -1,0 +1,22 @@
+# secrets & local config
+.env
+*.jks
+*.keystore
+key.properties
+google-services.json
+GoogleService-Info.plist
+# build output
+target/
+build/
+.dart_tool/
+.gradle/
+*.aab
+*.apk
+# local data
+backend/data/
+*.log
+.idea/
+.vscode/
+local.properties
+
+secrets/

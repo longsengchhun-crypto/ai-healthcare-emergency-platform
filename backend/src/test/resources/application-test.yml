@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:healthtest;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+app:
+  jwt:
+    secret: test-only-secret-test-only-secret-0123456789
+  storage:
+    root: ./target/test-documents
+  rate-limit:
+    auth-per-minute: 1000
+  seed:
+    demo-enabled: true
+    demo-password: Demo-Password-123
