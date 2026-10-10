@@ -46,7 +46,7 @@ The `*PostgresTest` classes subclass the H2 tests and run them against embedded 
 * **Docker (verified later the same day)**: `docker compose config` passed; `docker compose up --build` built the
   backend image, started PostgreSQL 16 and the backend, both reported `healthy`; against that stack a demo patient
   created an emergency (`SUBMITTED`) and demo staff acknowledged it (`ACKNOWLEDGED`). Image vulnerability scan not run.
-* **GitHub Actions**: workflow written, never executed.
+* **GitHub Actions**: run #2 (commit 9b458fd, manual dispatch) passed all three jobs: backend `mvn verify`, mobile analyze + test + debug APK, compose validation. The dashboard is not in the workflow.
 * **On-device / emulator run**: no emulator or phone was available; the Android UI, runtime permission prompts,
   GPS, sensors, local notifications and tel:/geo: intents were **not exercised**. Only compilation, static analysis,
   unit/widget tests and the API contract test were run.

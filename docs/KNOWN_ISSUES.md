@@ -28,7 +28,7 @@ L = polish.
 | # | Item |
 |---|---|
 | 16 | ~~Docker build/compose/health~~ **Verified 2026-10-10**: image builds, PostgreSQL 16 + backend start, both healthy, emergency create + staff acknowledge succeed over HTTP. Image not scanned; production topology (TLS proxy, managed DB) untested |
-| 17 | GitHub Actions workflow execution |
+| 17 | ~~GitHub Actions execution~~ **Verified**: run #2 (manual dispatch on commit 9b458fd) passed backend, mobile and compose-validate. The dashboard is not part of the CI workflow |
 | 18 | Any run on an Android emulator/device (UI polish, permissions, GPS, sensors, notifications, call/map intents) |
 | 19 | Play-signing/upload and Play Console pre-launch report (AAB is signed with a local upload key) |
 | 20 | Accessibility (TalkBack, contrast, large-text) |
