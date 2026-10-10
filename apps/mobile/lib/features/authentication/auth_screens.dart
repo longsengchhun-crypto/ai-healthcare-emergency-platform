@@ -94,15 +94,19 @@ class _AuthFrame extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Text(
-                        'HealthResponse',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 17,
-                          color: p.ink,
+                      Expanded(
+                        child: Text(
+                          'HealthResponse',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 17,
+                            color: p.ink,
+                          ),
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       LanguageToggle(
                         isKhmer: context.isKhmer,
                         onChanged: (c) => languageController.set(c),

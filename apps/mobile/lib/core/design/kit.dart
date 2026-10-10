@@ -213,43 +213,49 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = Palette.of(context);
-    final enabled = onPressed != null && !busy;
-    return Tap(
-      onTap: enabled ? onPressed : null,
-      child: Container(
-        height: 54,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: enabled ? (danger ? p.red : p.ink) : p.line,
-          borderRadius: BorderRadius.circular(Radii.md),
-        ),
-        child: busy
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  color: Colors.white,
-                ),
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: 20, color: Colors.white),
-                    const SizedBox(width: 8),
-                  ],
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      height: 1.4,
+    final disabled = onPressed == null && !busy;
+    final tappable = onPressed != null && !busy;
+    // Ink is near-white in dark mode, so the label must use the page colour (dark) there: contrast in BOTH themes.
+    final fill = disabled ? p.line : (danger ? p.red : p.ink);
+    final fg = disabled ? p.muted : (danger ? Colors.white : p.paper);
+    return Semantics(
+      button: true,
+      enabled: tappable,
+      label: label,
+      child: Tap(
+        onTap: tappable ? onPressed : null,
+        child: Container(
+          height: 54,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: fill,
+            borderRadius: BorderRadius.circular(Radii.md),
+          ),
+          child: busy
+              ? SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.4, color: fg),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(icon, size: 20, color: fg),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: fg,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        height: 1.4,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+        ),
       ),
     );
   }
