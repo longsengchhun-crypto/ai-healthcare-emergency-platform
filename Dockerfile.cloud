@@ -11,7 +11,9 @@ ARG FLUTTER_VERSION=3.47.7
 RUN apt-get update && apt-get install -y --no-install-recommends git curl unzip xz-utils ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 RUN git clone --depth 1 --branch ${FLUTTER_VERSION} https://github.com/flutter/flutter.git /flutter
-ENV PATH="/flutter/bin:${PATH}" FLUTTER_SUPPRESS_ANALYTICS=true CI=true
+# TAR_OPTIONS: some hosted builders (Render) forbid chown inside the build sandbox; without this, Flutter's artifact
+# extraction (tar) fails with "Cannot change ownership to uid ..." (seen on Render, 2026-10-10).
+ENV PATH="/flutter/bin:${PATH}" FLUTTER_SUPPRESS_ANALYTICS=true CI=true TAR_OPTIONS="--no-same-owner"
 RUN git config --global --add safe.directory /flutter && flutter config --no-analytics >/dev/null \
     && flutter precache --web
 WORKDIR /src
