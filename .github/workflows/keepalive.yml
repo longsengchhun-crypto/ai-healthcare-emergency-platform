@@ -1,0 +1,28 @@
+# Keeps the free Render service awake (it sleeps after ~15 min idle and then takes ~45 s to wake, which shows
+# Render's "APPLICATION LOADING" page). Pings the public health endpoint every 10 minutes.
+# Set the repository variable RENDER_URL (Settings -> Secrets and variables -> Actions -> Variables) to change the host.
+name: keepalive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping health endpoint
+        env:
+          URL: ${{ vars.RENDER_URL || 'https://healthresponse.onrender.com' }}
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -m 120 -w "%{http_code}" "$URL/actuator/health/liveness" || true)
+            echo "attempt $i -> HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 15
+          done
+          exit 1

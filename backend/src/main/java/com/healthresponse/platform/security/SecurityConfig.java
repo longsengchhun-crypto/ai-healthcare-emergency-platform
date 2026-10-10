@@ -42,6 +42,7 @@ public class SecurityConfig {
                 // Static web apps (mobile web at /, dashboard at /dashboard/). Never reaches /api/** because that is
                 // matched above; unknown paths simply 404.
                 .requestMatchers(HttpMethod.GET, "/**").permitAll()
+                .requestMatchers(HttpMethod.HEAD, "/**").permitAll() // link-preview crawlers / uptime monitors
                 .anyRequest().denyAll())
             .exceptionHandling(e -> e
                 .authenticationEntryPoint((req, res, ex) -> {
