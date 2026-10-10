@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
+import '../../core/design/kit.dart';
+import '../../core/design/palette.dart';
 import '../../core/errors/app_exception.dart';
+import '../../core/i18n/language.dart';
 import '../../core/network/providers.dart';
-import '../../core/widgets/state_views.dart';
 import 'reminder_scheduler.dart';
 
 final reminderSchedulerProvider = Provider<ReminderScheduler>(
@@ -30,84 +31,165 @@ class MedicationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = Palette.of(context);
     final meds = ref.watch(medicationsProvider);
     final reminders = ref.watch(remindersProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Medications')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _addMedication(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('Add medication'),
-      ),
-      body: meds.when(
-        loading: () => const LoadingView(),
-        error: (e, _) => ErrorView(
-          error: e,
-          onRetry: () => ref.invalidate(medicationsProvider),
-        ),
-        data: (items) {
-          final byId = {for (final m in items) m['id'] as String: m};
-          final rems = reminders.value ?? const <Map<String, dynamic>>[];
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      appBar: AppBar(title: Text(context.t('ថ្នាំរបស់ខ្ញុំ', 'My medicines'))),
+      floatingActionButton: Tap(
+        onTap: () => _addMedication(context, ref),
+        child: Container(
+          height: 54,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: p.ink,
+            borderRadius: BorderRadius.circular(Radii.pill),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const NoticeBanner(
-                'This app records what you or your clinician entered. It never recommends or changes doses.',
+              Icon(Icons.add_rounded, color: p.paper),
+              const SizedBox(width: 8),
+              Text(
+                context.t('បន្ថែមថ្នាំ', 'Add medicine'),
+                style: TextStyle(color: p.paper, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 16),
-              if (items.isEmpty)
-                const EmptyView(
-                  icon: Icons.medication_outlined,
-                  title: 'No medications yet',
-                  message: 'Add a medication to set daily reminders.',
+            ],
+          ),
+        ),
+      ),
+      body: PageWidth(
+        child: meds.when(
+          loading: () => const SkeletonList(),
+          error: (e, _) => ErrorState(
+            error: e,
+            onRetry: () => ref.invalidate(medicationsProvider),
+          ),
+          data: (items) {
+            final rems = reminders.value ?? const <Map<String, dynamic>>[];
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(
+                Gap.page,
+                Gap.sm,
+                Gap.page,
+                110,
+              ),
+              children: [
+                Notice(
+                  context.t(
+                    'កម្មវិធីនេះកត់ត្រាតែអ្វីដែលអ្នក ឬគ្រូពេទ្យបានបញ្ចូល ហើយមិនដែលណែនាំ ឬកែកម្រិតថ្នាំឡើយ។',
+                    'This app only records what you or your clinician entered. It never recommends or changes doses.',
+                  ),
+                  tone: Tone.teal,
                 ),
-              for (final m in items)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+                const SizedBox(height: Gap.lg),
+                if (items.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 40),
+                    child: EmptyState(
+                      art: Art.pill,
+                      title: context.t('មិនទាន់មានថ្នាំ', 'No medicines yet'),
+                      message: context.t(
+                        'បន្ថែមថ្នាំ ហើយកំណត់ការរំលឹករាល់ថ្ងៃ។',
+                        'Add a medicine and set a daily reminder.',
+                      ),
+                    ),
+                  ),
+                for (final m in items) ...[
+                  Surface(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Expanded(
-                              child: Text(
-                                m['name'] as String,
-                                style: Theme.of(context).textTheme.titleMedium,
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: p.tealSoft,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(
+                                Icons.medication_rounded,
+                                color: p.tealDeep,
                               ),
                             ),
-                            Chip(
-                              label: Text(
-                                m['source'] == 'PRESCRIPTION'
-                                    ? 'Prescribed'
-                                    : 'Entered by you',
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    m['name'] as String,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16.5,
+                                    ),
+                                  ),
+                                  if (m['dosage'] != null)
+                                    Text(
+                                      m['dosage'] as String,
+                                      style: TextStyle(color: p.inkSoft),
+                                    ),
+                                ],
                               ),
+                            ),
+                            Pill(
+                              m['source'] == 'PRESCRIPTION'
+                                  ? context.t('តាមវេជ្ជបញ្ជា', 'Prescribed')
+                                  : context.t('អ្នកបញ្ចូល', 'Entered by you'),
+                              tone: m['source'] == 'PRESCRIPTION'
+                                  ? Tone.teal
+                                  : Tone.neutral,
                             ),
                           ],
                         ),
-                        if (m['dosage'] != null) Text(m['dosage'] as String),
                         if (m['instructions'] != null)
-                          Text(m['instructions'] as String),
-                        const SizedBox(height: 8),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Text(
+                              m['instructions'] as String,
+                              style: TextStyle(color: p.muted, height: 1.45),
+                            ),
+                          ),
+                        const SizedBox(height: 6),
+                        Divider(color: p.line),
                         for (final r in rems.where(
                           (r) => r['medicationId'] == m['id'],
                         ))
-                          _ReminderTile(
-                            reminder: r,
-                            medication: byId[m['id']]!,
+                          _ReminderRow(reminder: r),
+                        Tap(
+                          onTap: () => _addReminder(context, ref, m),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.add_alarm_rounded,
+                                  color: p.teal,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  context.t('បន្ថែមការរំលឹក', 'Add a reminder'),
+                                  style: TextStyle(
+                                    color: p.teal,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        TextButton.icon(
-                          onPressed: () => _addReminder(context, ref, m),
-                          icon: const Icon(Icons.alarm_add),
-                          label: const Text('Add reminder'),
                         ),
                       ],
                     ),
                   ),
-                ),
-            ],
-          );
-        },
+                  const SizedBox(height: 12),
+                ],
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -119,38 +201,53 @@ class MedicationsScreen extends ConsumerWidget {
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      showDragHandle: true,
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          MediaQuery.of(ctx).viewInsets.bottom + 16,
+          Gap.page,
+          4,
+          Gap.page,
+          MediaQuery.of(ctx).viewInsets.bottom + Gap.page,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(
+              ctx.t('ថ្នាំថ្មី', 'New medicine'),
+              style: Theme.of(ctx).textTheme.titleLarge,
+            ),
+            const SizedBox(height: Gap.lg),
             TextField(
               controller: name,
-              decoration: const InputDecoration(labelText: 'Medication name'),
+              decoration: InputDecoration(
+                labelText: ctx.t('ឈ្មោះថ្នាំ', 'Medicine name'),
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: Gap.md),
             TextField(
               controller: dosage,
-              decoration: const InputDecoration(
-                labelText: 'Dosage as prescribed (optional)',
+              decoration: InputDecoration(
+                labelText: ctx.t(
+                  'កម្រិតតាមវេជ្ជបញ្ជា (មិនចាំបាច់)',
+                  'Dose as prescribed (optional)',
+                ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: Gap.md),
             TextField(
               controller: instructions,
-              decoration: const InputDecoration(
-                labelText: 'Instructions (optional)',
+              decoration: InputDecoration(
+                labelText: ctx.t(
+                  'សេចក្តីណែនាំ (មិនចាំបាច់)',
+                  'Instructions (optional)',
+                ),
               ),
             ),
-            const SizedBox(height: 12),
-            FilledButton(
+            const SizedBox(height: Gap.lg),
+            PrimaryButton(
+              label: ctx.t('រក្សាទុក', 'Save'),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Save'),
             ),
           ],
         ),
@@ -171,10 +268,9 @@ class MedicationsScreen extends ConsumerWidget {
           );
       ref.invalidate(medicationsProvider);
     } on AppException catch (e) {
-      if (context.mounted) {
+      if (context.mounted)
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(describeError(e))));
-      }
     }
   }
 
@@ -190,8 +286,8 @@ class MedicationsScreen extends ConsumerWidget {
     if (picked == null) return;
     final scheduler = ref.read(reminderSchedulerProvider);
     final granted = await scheduler.requestPermission();
-    // Timezone of the reminder is the clinic/user zone used for display; default to the app region.
     const zone = 'Asia/Phnom_Penh';
+    final now = DateTime.now();
     try {
       final created =
           await ref
@@ -203,8 +299,8 @@ class MedicationsScreen extends ConsumerWidget {
                       'timeOfDay':
                           '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00',
                       'timezone': zone,
-                      'startDate': DateFormat('yyyy-MM-dd')
-                          .format(DateTime.now()),
+                      'startDate':
+                          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
                     },
                   )
               as Map;
@@ -221,62 +317,77 @@ class MedicationsScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              granted ? 'Reminder set.' : 'Reminder saved, but notifications are blocked. Enable notification permission to be alerted.',
+              granted
+                  ? context.t('បានកំណត់ការរំលឹក។', 'Reminder set.')
+                  : context.t(
+                      'បានរក្សាទុកការរំលឹក ប៉ុន្តែការជូនដំណឹងត្រូវបានបិទ។ សូមអនុញ្ញាតដើម្បីទទួលការរំលឹក។',
+                      'Reminder saved, but notifications are blocked. Allow them to be alerted.',
+                    ),
             ),
           ),
         );
       }
     } on AppException catch (e) {
-      if (context.mounted) {
+      if (context.mounted)
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(describeError(e))));
-      }
     }
   }
 }
 
-class _ReminderTile extends ConsumerWidget {
-  const _ReminderTile({required this.reminder, required this.medication});
+class _ReminderRow extends ConsumerWidget {
+  const _ReminderRow({required this.reminder});
   final Map<String, dynamic> reminder;
-  final Map<String, dynamic> medication;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = Palette.of(context);
     final active = reminder['active'] as bool;
     final time = (reminder['timeOfDay'] as String).substring(0, 5);
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text('Daily at $time'),
-      subtitle: Text(active ? 'On' : 'Paused'),
-      value: active,
-      onChanged: (v) async {
-        final scheduler = ref.read(reminderSchedulerProvider);
-        try {
-          await ref
-              .read(apiClientProvider)
-              .patch(
-                '/medication-reminders/${reminder['id']}',
-                body: {'active': v},
-              );
-          if (v) {
-            final parts = time.split(':');
-            await scheduler.schedule(
-              reminderId: reminder['id'] as String,
-              hour: int.parse(parts[0]),
-              minute: int.parse(parts[1]),
-              timezoneName: reminder['timezone'] as String,
-            );
-          } else {
-            await scheduler.cancel(reminder['id'] as String);
-          }
-          ref.invalidate(remindersProvider);
-        } on AppException catch (e) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text(describeError(e))));
-          }
-        }
-      },
+    return Row(
+      children: [
+        Icon(Icons.alarm_rounded, size: 20, color: active ? p.teal : p.muted),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            '$time · ${context.t('រាល់ថ្ងៃ', 'every day')}',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: active ? p.ink : p.muted,
+            ),
+          ),
+        ),
+        Switch(
+          value: active,
+          onChanged: (v) async {
+            final scheduler = ref.read(reminderSchedulerProvider);
+            try {
+              await ref
+                  .read(apiClientProvider)
+                  .patch(
+                    '/medication-reminders/${reminder['id']}',
+                    body: {'active': v},
+                  );
+              if (v) {
+                final parts = time.split(':');
+                await scheduler.schedule(
+                  reminderId: reminder['id'] as String,
+                  hour: int.parse(parts[0]),
+                  minute: int.parse(parts[1]),
+                  timezoneName: reminder['timezone'] as String,
+                );
+              } else {
+                await scheduler.cancel(reminder['id'] as String);
+              }
+              ref.invalidate(remindersProvider);
+            } on AppException catch (e) {
+              if (context.mounted)
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(describeError(e))));
+            }
+          },
+        ),
+      ],
     );
   }
 }

@@ -53,3 +53,5 @@ L = polish.
 | 34 | Doctor and hospital pictures are **illustrated avatars/banners generated for this project** (not photographs): using real people's photos for fictional doctors would be misleading and licence-restricted. All people, names and institutions in the seed data are fictional and labelled "គំរូ / Sample" | L |
 | 35 | Khmer is used for data (names, specialties, bios, key headings, bilingual labels) and a Khmer font is bundled, but the **full UI is not localised/translatable** (no language switch, many strings are English-only). Khmer spellings were written without a native-speaker review | M |
 | 36 | Appointment list endpoint had no test until real data exposed a 500 (text-block spacing); now covered by `appointmentListsAreScopedPerRoleAndIncludeDisplayFields` | — |
+| 37 | UI redesign verified by rendered previews (`docs/design-preview/`) and the owner's iPhone browser only; not reviewed on a physical Android device, in dark mode, or with TalkBack | M |
+| 38 | Switching language does not re-localise dates already cached by the OS or server-provided messages (some API error text stays English) | L |

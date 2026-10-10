@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/design/kit.dart';
+import '../../core/design/kit_extra.dart';
+import '../../core/design/palette.dart';
 import '../../core/errors/app_exception.dart';
+import '../../core/i18n/language.dart';
 import '../../core/network/providers.dart';
-import '../../core/widgets/state_views.dart';
+import '../../core/widgets/media.dart';
 import '../authentication/auth_controller.dart';
-import '../sensors/sensor_controller.dart';
 
 final profileProvider = FutureProvider.autoDispose<Map<String, dynamic>>((
   ref,
@@ -30,96 +33,180 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = Palette.of(context);
     final user = ref.watch(authControllerProvider).user;
     final isPatient = user?.isPatient ?? false;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+    final isDoctor = user?.isDoctor ?? false;
+
+    Widget group(List<Widget> rows) => Surface(
+      padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
+      child: Column(
         children: [
-          Card(
-            child: ListTile(
-              leading: const CircleAvatar(child: Icon(Icons.person)),
-              title: Text(user?.fullName ?? ''),
-              subtitle: Text(
-                '${user?.email ?? ''}\n${user?.roles.join(', ') ?? ''}',
-              ),
-              isThreeLine: true,
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (isPatient) ...[
-            _tile(
-              context,
-              Icons.badge_outlined,
-              'Health profile',
-              '/profile/edit',
-            ),
-            _tile(
-              context,
-              Icons.contacts_outlined,
-              'Emergency contacts',
-              '/profile/contacts',
-            ),
-            _tile(
-              context,
-              Icons.folder_shared_outlined,
-              'Medical records',
-              '/records',
-            ),
-            _tile(
-              context,
-              Icons.medication_outlined,
-              'Medications & reminders',
-              '/medications',
-            ),
-            _tile(
-              context,
-              Icons.auto_awesome_outlined,
-              'Health assistant',
-              '/assistant',
-            ),
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) Divider(color: p.line),
+            rows[i],
           ],
-          _tile(
-            context,
-            Icons.notifications_outlined,
-            'Notifications',
-            '/notifications',
-          ),
-          if (isPatient) ...[
-            _tile(context, Icons.sensors, 'Safety sensors', '/profile/sensors'),
-            _tile(
-              context,
-              Icons.privacy_tip_outlined,
-              'Privacy & data',
-              '/profile/privacy',
-            ),
-          ],
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: () => ref.read(authControllerProvider.notifier).logout(),
-            icon: const Icon(Icons.logout),
-            label: const Text('Sign out'),
-          ),
         ],
       ),
     );
-  }
 
-  Widget _tile(
-    BuildContext context,
-    IconData icon,
-    String title,
-    String route,
-  ) => Card(
-    margin: const EdgeInsets.only(bottom: 8),
-    child: ListTile(
-      leading: Icon(icon),
-      title: Text(title),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => context.push(route),
-    ),
-  );
+    return Scaffold(
+      body: SafeArea(
+        child: PageWidth(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              Gap.page,
+              Gap.lg,
+              Gap.page,
+              Gap.xxl,
+            ),
+            children: [
+              Row(
+                children: [
+                  PersonAvatar(name: user?.fullName ?? '?', size: 68),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user?.fullName ?? '',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        Text(
+                          user?.email ?? '',
+                          style: TextStyle(color: p.muted),
+                        ),
+                        const SizedBox(height: 6),
+                        Pill(
+                          isDoctor
+                              ? context.t('គ្រូពេទ្យ', 'Doctor')
+                              : isPatient
+                              ? context.t('អ្នកជំងឺ', 'Patient')
+                              : context.t('បុគ្គលិក', 'Staff'),
+                          tone: Tone.teal,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Gap.xl),
+              if (isPatient) ...[
+                SectionHeader(context.t('សុខភាពរបស់ខ្ញុំ', 'My health')),
+                group([
+                  InfoRow(
+                    icon: Icons.badge_outlined,
+                    label: context.t('ព័ត៌មានសុខភាព', 'Health profile'),
+                    onTap: () => context.push('/profile/edit'),
+                  ),
+                  InfoRow(
+                    icon: Icons.contacts_outlined,
+                    label: context.t(
+                      'អ្នកទាក់ទងសង្គ្រោះបន្ទាន់',
+                      'Emergency contacts',
+                    ),
+                    onTap: () => context.push('/profile/contacts'),
+                  ),
+                  InfoRow(
+                    icon: Icons.folder_open_rounded,
+                    label: context.t('កំណត់ត្រាសុខភាព', 'Health records'),
+                    onTap: () => context.push('/records'),
+                  ),
+                  InfoRow(
+                    icon: Icons.medication_rounded,
+                    label: context.t(
+                      'ថ្នាំ និងការរំលឹក',
+                      'Medicines & reminders',
+                    ),
+                    onTap: () => context.push('/medications'),
+                  ),
+                  InfoRow(
+                    icon: Icons.auto_awesome_rounded,
+                    label: context.t('ជំនួយសុខភាព', 'Health assistant'),
+                    onTap: () => context.push('/assistant'),
+                  ),
+                ]),
+                const SizedBox(height: Gap.xl),
+              ],
+              if (isDoctor) ...[
+                SectionHeader(context.t('ការងាររបស់ខ្ញុំ', 'My practice')),
+                group([
+                  InfoRow(
+                    icon: Icons.schedule_rounded,
+                    label: context.t('ម៉ោងទទួលអ្នកជំងឺ', 'Working hours'),
+                    onTap: () => context.push('/profile/availability'),
+                  ),
+                ]),
+                const SizedBox(height: Gap.xl),
+              ],
+              SectionHeader(context.t('ការកំណត់', 'Settings')),
+              group([
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: p.tealSoft,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.translate_rounded,
+                          size: 19,
+                          color: p.tealDeep,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          context.t('ភាសា', 'Language'),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      LanguageToggle(
+                        isKhmer: context.isKhmer,
+                        onChanged: (c) => languageController.set(c),
+                      ),
+                    ],
+                  ),
+                ),
+                InfoRow(
+                  icon: Icons.notifications_none_rounded,
+                  label: context.t('ការជូនដំណឹង', 'Notifications'),
+                  onTap: () => context.push('/notifications'),
+                ),
+                if (isPatient) ...[
+                  InfoRow(
+                    icon: Icons.sensors_rounded,
+                    label: context.t(
+                      'ឧបករណ៍ចាប់សញ្ញាសុវត្ថិភាព',
+                      'Safety sensors',
+                    ),
+                    onTap: () => context.push('/profile/sensors'),
+                  ),
+                  InfoRow(
+                    icon: Icons.shield_outlined,
+                    label: context.t('ឯកជនភាព និងទិន្នន័យ', 'Privacy & data'),
+                    onTap: () => context.push('/profile/privacy'),
+                  ),
+                ],
+              ]),
+              const SizedBox(height: Gap.xl),
+              GhostButton(
+                icon: Icons.logout_rounded,
+                label: context.t('ចាកចេញ', 'Sign out'),
+                onPressed: () =>
+                    ref.read(authControllerProvider.notifier).logout(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -165,20 +252,35 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           );
       ref.invalidate(profileProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Profile saved.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.t('បានរក្សាទុក។', 'Saved.'))),
+        );
         context.pop();
       }
     } on AppException catch (e) {
       final detail = e.fields?.entries
           .map((f) => '${f.key}: ${f.value}')
           .join('\n');
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(detail ?? describeError(e))));
-      }
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final initial = DateTime.tryParse(_dob.text) ?? DateTime(1995, 1, 1);
+    final d = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (d != null) {
+      _dob.text =
+          '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      setState(() {});
     }
   }
 
@@ -186,63 +288,85 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Health profile')),
+      appBar: AppBar(title: Text(context.t('ព័ត៌មានសុខភាព', 'Health profile'))),
       body: profile.when(
-        loading: () => const LoadingView(),
-        error: (e, _) =>
-            ErrorView(error: e, onRetry: () => ref.invalidate(profileProvider)),
-        data: (p) {
+        loading: () => const SkeletonList(count: 4, itemHeight: 64),
+        error: (e, _) => ErrorState(
+          error: e,
+          onRetry: () => ref.invalidate(profileProvider),
+        ),
+        data: (pr) {
           if (!_loaded) {
             _loaded = true;
-            _dob.text = (p['dateOfBirth'] as String?) ?? '';
-            _blood.text = (p['bloodGroup'] as String?) ?? '';
-            _allergies.text = (p['allergies'] as String?) ?? '';
-            _conditions.text = (p['conditions'] as String?) ?? '';
+            _dob.text = (pr['dateOfBirth'] as String?) ?? '';
+            _blood.text = (pr['bloodGroup'] as String?) ?? '';
+            _allergies.text = (pr['allergies'] as String?) ?? '';
+            _conditions.text = (pr['conditions'] as String?) ?? '';
           }
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              const NoticeBanner(
-                'All health fields are optional. They help responders and clinicians, and are only shared as described in Privacy & data.',
+          return PageWidth(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                Gap.page,
+                0,
+                Gap.page,
+                Gap.xxl,
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _dob,
-                decoration: const InputDecoration(
-                  labelText: 'Date of birth',
-                  hintText: 'YYYY-MM-DD',
+              children: [
+                Notice(
+                  context.t(
+                    'ព័ត៌មានទាំងអស់មិនចាំបាច់ត្រូវបំពេញទេ។ វាជួយអ្នកឆ្លើយតប និងគ្រូពេទ្យ ហើយចែករំលែកតាមដែលបានពន្យល់ក្នុង "ឯកជនភាព"។',
+                    'Everything here is optional. It helps responders and clinicians and is shared only as explained in Privacy.',
+                  ),
+                  tone: Tone.teal,
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _blood,
-                decoration: const InputDecoration(
-                  labelText: 'Blood group (optional)',
-                  hintText: 'e.g. O+',
+                const SizedBox(height: Gap.lg),
+                TextField(
+                  controller: _dob,
+                  readOnly: true,
+                  onTap: _pickDate,
+                  decoration: InputDecoration(
+                    labelText: context.t('ថ្ងៃខែឆ្នាំកំណើត', 'Date of birth'),
+                    suffixIcon: const Icon(Icons.calendar_today_rounded),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _allergies,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Allergies (optional)',
+                const SizedBox(height: Gap.md),
+                TextField(
+                  controller: _blood,
+                  decoration: InputDecoration(
+                    labelText: context.t(
+                      'ក្រុមឈាម (មិនចាំបាច់)',
+                      'Blood group (optional)',
+                    ),
+                    hintText: 'O+',
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _conditions,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Existing conditions (optional)',
+                const SizedBox(height: Gap.md),
+                TextField(
+                  controller: _allergies,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: context.t('អាឡែរហ្សី', 'Allergies'),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _busy ? null : _save,
-                child: const Text('Save'),
-              ),
-            ],
+                const SizedBox(height: Gap.md),
+                TextField(
+                  controller: _conditions,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: context.t(
+                      'ជំងឺដែលមានស្រាប់',
+                      'Existing conditions',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Gap.xl),
+                PrimaryButton(
+                  label: context.t('រក្សាទុក', 'Save'),
+                  busy: _busy,
+                  onPressed: _save,
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -255,54 +379,118 @@ class ContactsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = Palette.of(context);
     final contacts = ref.watch(contactsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Emergency contacts')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _add(context, ref),
-        icon: const Icon(Icons.person_add),
-        label: const Text('Add contact'),
-      ),
-      body: contacts.when(
-        loading: () => const LoadingView(),
-        error: (e, _) => ErrorView(
-          error: e,
-          onRetry: () => ref.invalidate(contactsProvider),
+      appBar: AppBar(
+        title: Text(
+          context.t('អ្នកទាក់ទងសង្គ្រោះបន្ទាន់', 'Emergency contacts'),
         ),
-        data: (items) => ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            const NoticeBanner(
-              'If you turn on SMS alerts below, your contacts receive a text with your name and shared location '
-              'when you send a real (non-demo) emergency request. It needs an SMS provider configured on the server.',
-              warning: true,
-            ),
-            const _SmsConsentTile(),
-            const SizedBox(height: 12),
-            if (items.isEmpty)
-              const EmptyView(
-                icon: Icons.contacts_outlined,
-                title: 'No contacts yet',
+      ),
+      floatingActionButton: Tap(
+        onTap: () => _add(context, ref),
+        child: Container(
+          height: 54,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: p.ink,
+            borderRadius: BorderRadius.circular(Radii.pill),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.person_add_alt_1_rounded, color: p.paper, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                context.t('បន្ថែមអ្នកទាក់ទង', 'Add contact'),
+                style: TextStyle(color: p.paper, fontWeight: FontWeight.w800),
               ),
-            for (final c in items)
-              Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  title: Text(c['name'] as String),
-                  subtitle: Text('${c['relationship'] ?? ''} ${c['phone']}'),
-                  trailing: IconButton(
-                    tooltip: 'Remove contact',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () async {
-                      await ref
-                          .read(apiClientProvider)
-                          .delete('/patients/me/emergency-contacts/${c['id']}');
-                      ref.invalidate(contactsProvider);
-                    },
+            ],
+          ),
+        ),
+      ),
+      body: PageWidth(
+        child: contacts.when(
+          loading: () => const SkeletonList(itemHeight: 72),
+          error: (e, _) => ErrorState(
+            error: e,
+            onRetry: () => ref.invalidate(contactsProvider),
+          ),
+          data: (items) => ListView(
+            padding: const EdgeInsets.fromLTRB(Gap.page, 0, Gap.page, 110),
+            children: [
+              Notice(
+                context.t(
+                  'ប្រសិនបើអ្នកបើកការផ្ញើសារខាងក្រោម អ្នកទាក់ទងនឹងទទួលសារដែលមានឈ្មោះ និងទីតាំងដែលបានចែករំលែករបស់អ្នក នៅពេលអ្នកផ្ញើសំណើសង្គ្រោះបន្ទាន់ពិតប្រាកដ។ ត្រូវការអ្នកផ្តល់សេវា SMS នៅលើម៉ាស៊ីនមេ។',
+                  'If you turn on SMS alerts below, contacts get a text with your name and shared location when you send a real (non-practice) emergency request. Needs an SMS provider on the server.',
+                ),
+                tone: Tone.amber,
+              ),
+              const SizedBox(height: Gap.md),
+              const _SmsConsentTile(),
+              const SizedBox(height: Gap.sm),
+              if (items.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 20),
+                  child: EmptyState(
+                    art: Art.shield,
+                    title: context.t('មិនទាន់មានអ្នកទាក់ទង', 'No contacts yet'),
+                    message: context.t(
+                      'បន្ថែមមនុស្សដែលអ្នកទុកចិត្ត។',
+                      'Add people you trust.',
+                    ),
                   ),
                 ),
-              ),
-          ],
+              for (final c in items)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Surface(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Gap.lg,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        PersonAvatar(name: c['name'] as String, size: 44),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                c['name'] as String,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                '${c['relationship'] ?? ''}  ${c['phone']}',
+                                style: TextStyle(color: p.muted, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: context.t('លុប', 'Remove'),
+                          icon: Icon(
+                            Icons.delete_outline_rounded,
+                            color: p.muted,
+                          ),
+                          onPressed: () async {
+                            await ref
+                                .read(apiClientProvider)
+                                .delete(
+                                  '/patients/me/emergency-contacts/${c['id']}',
+                                );
+                            ref.invalidate(contactsProvider);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -315,37 +503,49 @@ class ContactsScreen extends ConsumerWidget {
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      showDragHandle: true,
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          MediaQuery.of(ctx).viewInsets.bottom + 16,
+          Gap.page,
+          4,
+          Gap.page,
+          MediaQuery.of(ctx).viewInsets.bottom + Gap.page,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(
+              ctx.t('អ្នកទាក់ទងថ្មី', 'New contact'),
+              style: Theme.of(ctx).textTheme.titleLarge,
+            ),
+            const SizedBox(height: Gap.lg),
             TextField(
               controller: name,
-              decoration: const InputDecoration(labelText: 'Name'),
+              decoration: InputDecoration(labelText: ctx.t('ឈ្មោះ', 'Name')),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: Gap.md),
             TextField(
               controller: phone,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: 'Phone'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: relation,
-              decoration: const InputDecoration(
-                labelText: 'Relationship (optional)',
+              decoration: InputDecoration(
+                labelText: ctx.t('លេខទូរស័ព្ទ (+855…)', 'Phone (+855…)'),
               ),
             ),
-            const SizedBox(height: 12),
-            FilledButton(
+            const SizedBox(height: Gap.md),
+            TextField(
+              controller: relation,
+              decoration: InputDecoration(
+                labelText: ctx.t(
+                  'ទំនាក់ទំនង (មិនចាំបាច់)',
+                  'Relationship (optional)',
+                ),
+              ),
+            ),
+            const SizedBox(height: Gap.lg),
+            PrimaryButton(
+              label: ctx.t('រក្សាទុក', 'Save'),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Save'),
             ),
           ],
         ),
@@ -366,162 +566,10 @@ class ContactsScreen extends ConsumerWidget {
           );
       ref.invalidate(contactsProvider);
     } on AppException catch (e) {
-      if (context.mounted) {
+      if (context.mounted)
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(describeError(e))));
-      }
     }
-  }
-}
-
-class SensorSettingsScreen extends ConsumerWidget {
-  const SensorSettingsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final s = ref.watch(sensorControllerProvider);
-    final c = ref.read(sensorControllerProvider.notifier);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Safety sensors')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const NoticeBanner(
-            'Experimental. A phone-only detector can miss accidents and can trigger by mistake. '
-            'It only flags a POSSIBLE incident and asks if you are OK first. It never replaces calling for help.',
-            warning: true,
-          ),
-          const SizedBox(height: 12),
-          SwitchListTile(
-            title: const Text('Monitor motion sensors'),
-            subtitle: Text(switch (s.availability) {
-              SensorAvailability.unavailable => 'Sensors are unavailable on this device. Use demonstration mode below.',
-              _ =>
-                s.settings.monitoringEnabled
-                    ? 'Monitoring while the app is open.'
-                    : 'Off. No sensor data is read.',
-            }),
-            value: s.settings.monitoringEnabled,
-            onChanged: c.setMonitoring,
-          ),
-          SwitchListTile(
-            title: const Text('Send an emergency request if I do not respond'),
-            subtitle: const Text(
-              'Off by default. When off, an expired countdown sends nothing.',
-            ),
-            value: s.settings.autoDispatchEnabled,
-            onChanged: s.settings.monitoringEnabled ? c.setAutoDispatch : null,
-          ),
-          ListTile(
-            title: const Text('Countdown length'),
-            subtitle: Slider(
-              min: 10,
-              max: 60,
-              divisions: 10,
-              label: '${s.settings.countdownSeconds}s',
-              value: s.settings.countdownSeconds.toDouble(),
-              onChanged: (v) => c.setCountdown(v.round()),
-            ),
-            trailing: Text('${s.settings.countdownSeconds}s'),
-          ),
-          const Divider(height: 32),
-          Text(
-            'Demonstration mode',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Simulates a sensor sequence so you can try the "Are you OK?" flow. It is clearly marked as simulated.',
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () {
-              c.simulateIncident();
-              context.push('/safety-check');
-            },
-            icon: const Icon(Icons.science_outlined),
-            label: const Text('Simulate a possible incident'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class PrivacyScreen extends ConsumerWidget {
-  const PrivacyScreen({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Privacy & data')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            'What this app stores',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '• Your account and optional health profile\n'
-            '• Appointments, medical records and medications you or your clinicians add\n'
-            '• Emergency events, including the location you chose to share at that moment\n'
-            '• An audit trail of who accessed sensitive data\n\n'
-            'Location is requested only when you ask for help or check it. Motion sensors are read only if you '
-            'turn monitoring on. Hospital operators cannot browse your medical records.',
-          ),
-          const SizedBox(height: 16),
-          const NoticeBanner(
-            'This is a demonstration build. It is not a certified medical device and has not been '
-            'assessed against health-privacy regulations.',
-            warning: true,
-          ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () async {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Deactivate account?'),
-                  content: const Text(
-                    'You will be signed out everywhere and your account will be deactivated.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Cancel'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(120, 48),
-                      ),
-                      child: const Text('Deactivate'),
-                    ),
-                  ],
-                ),
-              );
-              if (ok != true) return;
-              try {
-                await ref.read(apiClientProvider).delete('/users/me');
-                await ref.read(authControllerProvider.notifier).logout();
-              } on AppException catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text(describeError(e))));
-                }
-              }
-            },
-            icon: const Icon(Icons.person_off_outlined),
-            label: const Text('Deactivate my account'),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -546,9 +594,8 @@ class _SmsConsentTileState extends ConsumerState<_SmsConsentTile> {
   Future<void> _load() async {
     try {
       final res = await ref.read(apiClientProvider).get('/consents') as Map;
-      if (mounted) {
+      if (mounted)
         setState(() => _value = res['EMERGENCY_CONTACT_SMS'] == true);
-      }
     } on AppException {
       if (mounted) setState(() => _value = false);
     }
@@ -565,23 +612,33 @@ class _SmsConsentTileState extends ConsumerState<_SmsConsentTile> {
           );
       if (mounted) setState(() => _value = v);
     } on AppException catch (e) {
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(describeError(e))));
-      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => SwitchListTile(
-    contentPadding: EdgeInsets.zero,
-    title: const Text('Text my contacts when I send an emergency request'),
-    subtitle: const Text(
-      'Off by default. Never used for demonstration events.',
+  Widget build(BuildContext context) => Surface(
+    padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: 4),
+    child: SwitchRow(
+      title: Text(
+        context.t(
+          'ផ្ញើសារទៅអ្នកទាក់ទងពេលខ្ញុំស្នើជំនួយ',
+          'Text my contacts when I ask for help',
+        ),
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+      subtitle: Text(
+        context.t(
+          'បិទតាមលំនាំដើម មិនប្រើសម្រាប់សំណើសាកល្បងទេ។',
+          'Off by default. Never used for practice requests.',
+        ),
+      ),
+      value: _value ?? false,
+      onChanged: (_value == null || _busy) ? null : _set,
     ),
-    value: _value ?? false,
-    onChanged: (_value == null || _busy) ? null : _set,
   );
 }

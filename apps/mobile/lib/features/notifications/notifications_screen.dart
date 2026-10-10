@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
+import '../../core/design/kit.dart';
+import '../../core/design/palette.dart';
+import '../../core/i18n/language.dart';
 import '../../core/network/providers.dart';
-import '../../core/widgets/state_views.dart';
 
 final notificationsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((
   ref,
@@ -13,54 +14,63 @@ final notificationsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((
   );
 });
 
+(IconData, Tone) _category(String c) {
+  if (c.startsWith('EMERGENCY') || c.startsWith('RESPONDER'))
+    return (Icons.emergency_rounded, Tone.red);
+  if (c.startsWith('APPOINTMENT'))
+    return (Icons.event_available_rounded, Tone.blue);
+  if (c.startsWith('MEDICATION')) return (Icons.medication_rounded, Tone.teal);
+  return (Icons.notifications_rounded, Tone.neutral);
+}
+
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = Palette.of(context);
     final data = ref.watch(notificationsProvider);
-    final fmt = DateFormat('d MMM · HH:mm');
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
-      body: data.when(
-        loading: () => const LoadingView(),
-        error: (e, _) => ErrorView(
-          error: e,
-          onRetry: () => ref.invalidate(notificationsProvider),
-        ),
-        data: (d) {
-          final items = List<Map<String, dynamic>>.from(d['items'] as List);
-          if (items.isEmpty) {
-            return const EmptyView(
-              icon: Icons.notifications_none,
-              title: 'You are all caught up',
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: items.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, i) {
-              final n = items[i];
-              final read = n['read'] as bool;
-              return Card(
-                child: ListTile(
-                  leading: Icon(
-                    read
-                        ? Icons.notifications_none
-                        : Icons.notifications_active,
-                    color: read ? null : Theme.of(context).colorScheme.primary,
-                  ),
-                  title: Text(
-                    n['title'] as String,
-                    style: TextStyle(
-                      fontWeight: read ? FontWeight.w400 : FontWeight.w700,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${n['body']}\n${fmt.format(DateTime.parse(n['createdAt'] as String).toLocal())}',
-                  ),
-                  isThreeLine: true,
+      appBar: AppBar(title: Text(context.t('ការជូនដំណឹង', 'Notifications'))),
+      body: PageWidth(
+        child: data.when(
+          loading: () => const SkeletonList(itemHeight: 76),
+          error: (e, _) => ErrorState(
+            error: e,
+            onRetry: () => ref.invalidate(notificationsProvider),
+          ),
+          data: (d) {
+            final items = List<Map<String, dynamic>>.from(d['items'] as List);
+            if (items.isEmpty) {
+              return EmptyState(
+                art: Art.bell,
+                title: context.t(
+                  'គ្មានការជូនដំណឹងថ្មី',
+                  'You are all caught up',
+                ),
+                message: context.t(
+                  'ព័ត៌មានអំពីការណាត់ជួប និងសំណើនឹងបង្ហាញនៅទីនេះ។',
+                  'Updates about appointments and requests show up here.',
+                ),
+              );
+            }
+            return ListView.separated(
+              padding: const EdgeInsets.fromLTRB(
+                Gap.page,
+                Gap.sm,
+                Gap.page,
+                Gap.xl,
+              ),
+              itemCount: items.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, i) {
+                final n = items[i];
+                final read = n['read'] as bool;
+                final (icon, tone) = _category(n['category'] as String);
+                final created = DateTime.parse(n['createdAt'] as String)
+                    .toLocal();
+                return Surface(
+                  color: read ? p.surface : p.tealSoft.withValues(alpha: 0.5),
                   onTap: read
                       ? null
                       : () async {
@@ -69,11 +79,71 @@ class NotificationsScreen extends ConsumerWidget {
                               .post('/notifications/${n['id']}/read');
                           ref.invalidate(notificationsProvider);
                         },
-                ),
-              );
-            },
-          );
-        },
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: tone == Tone.red
+                              ? p.redSoft
+                              : (tone == Tone.blue
+                                    ? p.blue.withValues(alpha: .12)
+                                    : p.sand),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          icon,
+                          size: 21,
+                          color: tone == Tone.red
+                              ? p.red
+                              : (tone == Tone.blue ? p.blue : p.tealDeep),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              n['title'] as String,
+                              style: TextStyle(
+                                fontWeight: read
+                                    ? FontWeight.w600
+                                    : FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              n['body'] as String,
+                              style: TextStyle(color: p.inkSoft, height: 1.45),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              context.fmt('d MMM · HH:mm', created),
+                              style: TextStyle(color: p.muted, fontSize: 12.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!read)
+                        Container(
+                          width: 9,
+                          height: 9,
+                          margin: const EdgeInsets.only(top: 6),
+                          decoration: BoxDecoration(
+                            color: p.teal,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

@@ -1,9 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../../core/design/palette.dart';
+import '../../core/i18n/language.dart';
 
 /// Emergency activation control. Accidental taps are prevented by requiring a sustained press.
 /// Assistive technologies get an equivalent single-activation path that opens an explicit confirmation dialog,
@@ -14,13 +13,13 @@ class HoldToConfirmButton extends StatefulWidget {
     required this.onConfirmed,
     this.holdDuration = const Duration(milliseconds: 1800),
     this.enabled = true,
-    this.label = 'Hold to request emergency help',
+    this.label,
   });
 
   final VoidCallback onConfirmed;
   final Duration holdDuration;
   final bool enabled;
-  final String label;
+  final String? label;
 
   @override
   State<HoldToConfirmButton> createState() => _HoldToConfirmButtonState();
@@ -59,22 +58,27 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Request emergency help?'),
-        content: const Text(
-          'This sends an emergency request with your location to the response queue.',
+        title: Text(ctx.t('ស្នើសុំជំនួយបន្ទាន់?', 'Request emergency help?')),
+        content: Text(
+          ctx.t(
+            'សំណើនេះនឹងផ្ញើទីតាំងរបស់អ្នកទៅបញ្ជីរង់ចាំរបស់មន្ទីរពេទ្យ។',
+            'This sends your location to the hospital response queue.',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(ctx.t('បោះបង់', 'Cancel')),
           ),
-          FilledButton(
+          TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.emergency,
-              minimumSize: const Size(120, 48),
+            child: Text(
+              ctx.t('ផ្ញើសំណើ', 'Send request'),
+              style: TextStyle(
+                color: Palette.of(ctx).red,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-            child: const Text('Send request'),
           ),
         ],
       ),
@@ -84,10 +88,15 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
 
   @override
   Widget build(BuildContext context) {
+    final p = Palette.of(context);
+    final color = widget.enabled ? p.red : p.muted;
     return Semantics(
       button: true,
       enabled: widget.enabled,
-      label: 'Request emergency help. Double tap to open confirmation.',
+      label: context.t(
+        'ស្នើសុំជំនួយបន្ទាន់។ ចុចពីរដងដើម្បីបើកការបញ្ជាក់។',
+        'Request emergency help. Double tap to open confirmation.',
+      ),
       onTap: _confirmViaDialog,
       excludeSemantics: true,
       child: GestureDetector(
@@ -97,60 +106,70 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
         child: AnimatedBuilder(
           animation: _progress,
           builder: (context, _) {
-            final color = widget.enabled ? AppColors.emergency : Colors.grey;
             return SizedBox(
-              width: 200,
-              height: 200,
+              width: 220,
+              height: 220,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  SizedBox(
-                    width: 200,
-                    height: 200,
-                    child: CircularProgressIndicator(
-                      value: _progress.value,
-                      strokeWidth: 10,
-                      color: color,
-                      backgroundColor: color.withValues(alpha: 0.15),
-                    ),
-                  ),
                   Container(
-                    width: 168,
-                    height: 168,
+                    width: 220,
+                    height: 220,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: color,
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.35),
-                          blurRadius: 24,
-                          spreadRadius: 2 + 6 * _progress.value,
-                        ),
-                      ],
+                      color: color.withValues(alpha: 0.10),
                     ),
-                    alignment: Alignment.center,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.emergency_share_rounded,
-                          color: Colors.white,
-                          size: 48,
-                        ),
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          child: Text(
-                            widget.label,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
+                  ),
+                  SizedBox(
+                    width: 204,
+                    height: 204,
+                    child: CircularProgressIndicator(
+                      value: _progress.value,
+                      strokeWidth: 8,
+                      strokeCap: StrokeCap.round,
+                      color: color,
+                      backgroundColor: color.withValues(alpha: 0.16),
+                    ),
+                  ),
+                  AnimatedScale(
+                    scale: 1 - 0.05 * _progress.value,
+                    duration: const Duration(milliseconds: 60),
+                    child: Container(
+                      width: 168,
+                      height: 168,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: color,
+                      ),
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.emergency_rounded,
+                            color: Colors.white,
+                            size: 46,
+                          ),
+                          const SizedBox(height: 6),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 22),
+                            child: Text(
+                              widget.label ??
+                                  context.t(
+                                    'សង្កត់ដើម្បីស្នើសុំជំនួយ',
+                                    'Hold to ask for help',
+                                  ),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                height: 1.4,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],

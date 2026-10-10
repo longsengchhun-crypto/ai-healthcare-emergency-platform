@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/config/app_config.dart';
+import 'core/design/palette.dart';
+import 'core/i18n/language.dart';
 import 'core/routing/router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/authentication/auth_controller.dart';
@@ -20,6 +22,7 @@ class _HealthResponseAppState extends ConsumerState<HealthResponseApp> {
   void initState() {
     super.initState();
     Future.microtask(() async {
+      await languageController.load();
       await ref.read(authControllerProvider.notifier).bootstrap();
       await ref.read(sensorControllerProvider.notifier).load();
     });
@@ -47,7 +50,6 @@ class _HealthResponseAppState extends ConsumerState<HealthResponseApp> {
 
     final router = ref.watch(routerProvider);
 
-    // Possible-incident prompt takes over the screen as soon as the detector raises a candidate.
     // Register for push once signed in (no-op when Firebase is not configured at build time).
     ref.listen(authControllerProvider.select((s) => s.status), (prev, next) {
       if (next == AuthStatus.authenticated && prev != next) {
@@ -55,6 +57,7 @@ class _HealthResponseAppState extends ConsumerState<HealthResponseApp> {
       }
     });
 
+    // Possible-incident prompt takes over the screen as soon as the detector raises a candidate.
     ref.listen(sensorControllerProvider.select((s) => s.candidate), (
       prev,
       next,
@@ -62,13 +65,23 @@ class _HealthResponseAppState extends ConsumerState<HealthResponseApp> {
       if (prev == null && next != null) router.push('/safety-check');
     });
 
-    return MaterialApp.router(
-      title: AppConfig.appName,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
-      routerConfig: router,
-      debugShowCheckedModeBanner: false,
+    return LanguageScope(
+      controller: languageController,
+      child: ListenableBuilder(
+        listenable: languageController,
+        builder: (context, _) => MaterialApp.router(
+          title: AppConfig.appName,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: ThemeMode.system,
+          routerConfig: router,
+          debugShowCheckedModeBanner: false,
+          builder: (context, child) {
+            final p = Palette.of(context);
+            return ColoredBox(color: p.paper, child: child);
+          },
+        ),
+      ),
     );
   }
 }

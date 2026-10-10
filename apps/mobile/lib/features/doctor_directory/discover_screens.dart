@@ -1,49 +1,231 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/data/cached_get.dart';
+import '../../core/design/kit.dart';
+import '../../core/design/kit_extra.dart';
+import '../../core/design/palette.dart';
 import '../../core/errors/app_exception.dart';
+import '../../core/i18n/language.dart';
 import '../../core/network/providers.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/widgets/media.dart';
-import '../../core/widgets/state_views.dart';
 import '../appointments/appointments_screen.dart';
 import '../location/location_service.dart';
 
+typedef Rows = List<Map<String, dynamic>>;
+
 final doctorsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, String>((ref, q) async {
-      final res = await ref
-          .read(apiClientProvider)
-          .get('/doctors', query: {'q': q, 'size': 50});
-      return List<Map<String, dynamic>>.from((res as Map)['items'] as List);
+    .family<CachedResult<Rows>, String>((ref, q) async {
+      final api = ref.read(apiClientProvider);
+      final r = await cachedGet(
+        'doctors.$q',
+        () => api.get('/doctors', query: {'q': q, 'size': 50}),
+      );
+      return CachedResult(
+        Rows.from((r.data as Map)['items'] as List),
+        fromCache: r.fromCache,
+        savedAt: r.savedAt,
+      );
     });
 
 final hospitalsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, String>((ref, q) async {
+    .family<CachedResult<Rows>, String>((ref, q) async {
+      final api = ref.read(apiClientProvider);
       final loc = await DeviceLocationProvider().current(
         requestPermission: false,
       );
-      final res = await ref
-          .read(apiClientProvider)
-          .get(
-            '/hospitals',
-            query: {
-              'q': q,
-              'size': 30,
-              if (loc.hasFix) 'lat': loc.latitude,
-              if (loc.hasFix) 'lon': loc.longitude,
-            },
-          );
-      return List<Map<String, dynamic>>.from((res as Map)['items'] as List);
+      final r = await cachedGet(
+        'hospitals.$q',
+        () => api.get(
+          '/hospitals',
+          query: {
+            'q': q,
+            'size': 30,
+            if (loc.hasFix) 'lat': loc.latitude,
+            if (loc.hasFix) 'lon': loc.longitude,
+          },
+        ),
+      );
+      return CachedResult(
+        Rows.from((r.data as Map)['items'] as List),
+        fromCache: r.fromCache,
+        savedAt: r.savedAt,
+      );
     });
 
-String specialtyLabel(Map<String, dynamic> d) {
+final _hospitalDoctorsProvider = FutureProvider.autoDispose
+    .family<Rows, String>((ref, id) async {
+      final res = await ref
+          .read(apiClientProvider)
+          .get('/doctors', query: {'hospitalId': id, 'size': 20});
+      return Rows.from((res as Map)['items'] as List);
+    });
+
+String specialtyOf(BuildContext context, Map<String, dynamic> d) {
   final km = d['specialtyKm'] as String?;
   final en = d['specialty'] as String;
-  return km == null || km.isEmpty ? en : '$km · $en';
+  return context.isKhmer && km != null && km.isNotEmpty ? km : en;
 }
+
+String doctorTitle(BuildContext context, Map<String, dynamic> d) =>
+    context.isKhmer
+    ? d['fullName'] as String
+    : ((d['nameLatin'] as String?) ?? d['fullName'] as String);
+
+String? doctorSubtitle(BuildContext context, Map<String, dynamic> d) =>
+    context.isKhmer ? d['nameLatin'] as String? : d['fullName'] as String?;
+
+class OfflineBanner extends StatelessWidget {
+  const OfflineBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: Gap.md),
+    child: Notice(
+      context.t(
+        'អ្នកកំពុងមើលទិន្នន័យដែលបានរក្សាទុក ព្រោះគ្មានអ៊ីនធឺណិត។',
+        'You are offline. Showing the last saved list.',
+      ),
+      tone: Tone.amber,
+      icon: Icons.cloud_off_rounded,
+    ),
+  );
+}
+
+// ------------------------------------------------------------------ list row
+
+class DoctorRow extends StatelessWidget {
+  const DoctorRow({super.key, required this.doctor});
+  final Map<String, dynamic> doctor;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Palette.of(context);
+    final d = doctor;
+    final sub = doctorSubtitle(context, d);
+    return Surface(
+      padding: const EdgeInsets.all(12),
+      onTap: () => context.push('/doctor/${d['id']}'),
+      child: Row(
+        children: [
+          Hero(
+            tag: 'doctor-${d['id']}',
+            child: Portrait(
+              name: d['fullName'] as String,
+              photoUrl: d['photoUrl'] as String?,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  doctorTitle(context, d),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                    color: p.ink,
+                    height: 1.4,
+                  ),
+                ),
+                if (sub != null)
+                  Text(
+                    sub,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: p.muted, fontSize: 13),
+                  ),
+                const SizedBox(height: 6),
+                Text(
+                  specialtyOf(context, d),
+                  style: TextStyle(
+                    color: p.tealDeep,
+                    fontWeight: FontWeight.w700,
+                    height: 1.4,
+                  ),
+                ),
+                if (d['hospitalName'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Row(
+                      children: [
+                        Icon(Icons.place_outlined, size: 14, color: p.muted),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            d['hospitalName'] as String,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: p.muted, fontSize: 12.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (d['demo'] == true)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Pill(context.t('គំរូ', 'Sample'), tone: Tone.amber),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Portrait card for horizontal carousels.
+class DoctorTile extends StatelessWidget {
+  const DoctorTile({super.key, required this.doctor});
+  final Map<String, dynamic> doctor;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Palette.of(context);
+    return Tap(
+      onTap: () => context.push('/doctor/${doctor['id']}'),
+      child: SizedBox(
+        width: 132,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Portrait(
+              name: doctor['fullName'] as String,
+              photoUrl: doctor['photoUrl'] as String?,
+              width: 132,
+              height: 150,
+              radius: 22,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              doctorTitle(context, doctor),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontWeight: FontWeight.w800, color: p.ink),
+            ),
+            Text(
+              specialtyOf(context, doctor),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12.5, color: p.muted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ------------------------------------------------------------------ discover
 
 class DiscoverScreen extends ConsumerStatefulWidget {
   const DiscoverScreen({super.key});
@@ -55,6 +237,8 @@ class DiscoverScreen extends ConsumerStatefulWidget {
 class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   final _controller = TextEditingController();
   String _query = '';
+  int _tab = 0;
+  String? _specialty;
 
   @override
   void dispose() {
@@ -64,194 +248,74 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        body: SafeArea(
+    final p = Palette.of(context);
+    return Scaffold(
+      body: SafeArea(
+        child: PageWidth(
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'ស្វែងរកការថែទាំ',
-                    style: Theme.of(context).textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w800),
-                  ),
+                padding: const EdgeInsets.fromLTRB(
+                  Gap.page,
+                  Gap.lg,
+                  Gap.page,
+                  0,
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Find a doctor or hospital',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-                child: TextField(
-                  controller: _controller,
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: 'ឈ្មោះ ឬឯកទេស · Name or specialty',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _query.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Clear search',
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _controller.clear();
-                              setState(() => _query = '');
-                            },
-                          ),
-                  ),
-                  onSubmitted: (v) => setState(() => _query = v.trim()),
-                ),
-              ),
-              const TabBar(
-                tabs: [
-                  Tab(text: 'វេជ្ជបណ្ឌិត · Doctors'),
-                  Tab(text: 'មន្ទីរពេទ្យ · Hospitals'),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    _DoctorList(query: _query),
-                    _HospitalList(query: _query),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class DoctorCard extends StatelessWidget {
-  const DoctorCard({super.key, required this.doctor, this.compact = false});
-  final Map<String, dynamic> doctor;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final d = doctor;
-    final latin = d['nameLatin'] as String?;
-    if (compact) {
-      return SizedBox(
-        width: 150,
-        child: Card(
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => context.push('/doctor/${d['id']}'),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  PersonAvatar(
-                    name: d['fullName'] as String,
-                    photoUrl: d['photoUrl'] as String?,
-                    size: 72,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    d['fullName'] as String,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  Text(
-                    (d['specialtyKm'] as String?) ?? (d['specialty'] as String),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => context.push('/doctor/${d['id']}'),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              PersonAvatar(
-                name: d['fullName'] as String,
-                photoUrl: d['photoUrl'] as String?,
-                size: 68,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      d['fullName'] as String,
-                      style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      context.t('ស្វែងរកការថែទាំ', 'Find care'),
+                      style: Theme.of(context).textTheme.headlineMedium,
                     ),
-                    if (latin != null)
-                      Text(
-                        latin,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.outline,
-                          fontSize: 13,
+                    const SizedBox(height: Gap.lg),
+                    TextField(
+                      controller: _controller,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        hintText: context.t(
+                          'ឈ្មោះគ្រូពេទ្យ ឬឯកទេស',
+                          'Doctor name or specialty',
                         ),
-                      ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        TagChip(specialtyLabel(d)),
-                        if (d['demo'] == true)
-                          const TagChip(
-                            'គំរូ · Sample',
-                            color: AppColors.warning,
-                          ),
-                      ],
-                    ),
-                    if (d['hospitalName'] != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.place_outlined, size: 14),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                d['hospitalName'] as String,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 12),
+                        prefixIcon: Icon(Icons.search_rounded, color: p.muted),
+                        suffixIcon: _query.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: context.t('សម្អាត', 'Clear'),
+                                icon: const Icon(Icons.close_rounded),
+                                onPressed: () {
+                                  _controller.clear();
+                                  setState(() => _query = '');
+                                },
                               ),
-                            ),
-                          ],
-                        ),
                       ),
+                      onSubmitted: (v) => setState(() => _query = v.trim()),
+                    ),
+                    const SizedBox(height: Gap.md),
+                    Segmented(
+                      labels: [
+                        context.t('គ្រូពេទ្យ', 'Doctors'),
+                        context.t('មន្ទីរពេទ្យ', 'Hospitals'),
+                      ],
+                      index: _tab,
+                      onChanged: (i) => setState(() => _tab = i),
+                    ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: _tab == 0
+                      ? _DoctorList(
+                          key: const ValueKey('d'),
+                          query: _query,
+                          specialty: _specialty,
+                          onSpecialty: (s) => setState(() => _specialty = s),
+                        )
+                      : _HospitalList(key: const ValueKey('h'), query: _query),
+                ),
+              ),
             ],
           ),
         ),
@@ -261,127 +325,230 @@ class DoctorCard extends StatelessWidget {
 }
 
 class _DoctorList extends ConsumerWidget {
-  const _DoctorList({required this.query});
+  const _DoctorList({
+    super.key,
+    required this.query,
+    required this.specialty,
+    required this.onSpecialty,
+  });
   final String query;
+  final String? specialty;
+  final ValueChanged<String?> onSpecialty;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final doctors = ref.watch(doctorsProvider(query));
     return doctors.when(
-      loading: () => const LoadingView(),
-      error: (e, _) => ErrorView(
+      loading: () => const SkeletonList(),
+      error: (e, _) => ErrorState(
         error: e,
         onRetry: () => ref.invalidate(doctorsProvider(query)),
       ),
-      data: (items) => items.isEmpty
-          ? const EmptyView(
-              icon: Icons.person_search,
-              title: 'រកមិនឃើញវេជ្ជបណ្ឌិត · No doctors found',
-              message: 'Try a different name or specialty.',
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-              itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, i) => DoctorCard(doctor: items[i]),
+      data: (res) {
+        final all = res.data;
+        final specialties = {for (final d in all) d['specialty'] as String: d}
+            .values
+            .toList();
+        final items = specialty == null
+            ? all
+            : all.where((d) => d['specialty'] == specialty).toList();
+        if (all.isEmpty) {
+          return EmptyState(
+            art: Art.search,
+            title: context.t('រកមិនឃើញគ្រូពេទ្យ', 'No doctors found'),
+            message: context.t(
+              'សូមសាកល្បងឈ្មោះ ឬឯកទេសផ្សេង។',
+              'Try a different name or specialty.',
             ),
+          );
+        }
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(
+            Gap.page,
+            Gap.md,
+            Gap.page,
+            Gap.xl,
+          ),
+          children: [
+            if (res.fromCache) const OfflineBanner(),
+            SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _FilterChip(
+                    label: context.t('ទាំងអស់', 'All'),
+                    selected: specialty == null,
+                    onTap: () => onSpecialty(null),
+                  ),
+                  for (final d in specialties)
+                    _FilterChip(
+                      label: specialtyOf(context, d),
+                      selected: specialty == d['specialty'],
+                      onTap: () => onSpecialty(d['specialty'] as String),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: Gap.md),
+            for (final d in items) ...[
+              DoctorRow(doctor: d),
+              const SizedBox(height: 10),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Palette.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Tap(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? p.ink : p.surface,
+            borderRadius: BorderRadius.circular(Radii.pill),
+            border: Border.all(color: selected ? p.ink : p.line),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: selected ? p.paper : p.inkSoft,
+              height: 1.3,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
 class _HospitalList extends ConsumerWidget {
-  const _HospitalList({required this.query});
+  const _HospitalList({super.key, required this.query});
   final String query;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = Palette.of(context);
     final hospitals = ref.watch(hospitalsProvider(query));
     return hospitals.when(
-      loading: () => const LoadingView(),
-      error: (e, _) => ErrorView(
+      loading: () => const SkeletonList(itemHeight: 190),
+      error: (e, _) => ErrorState(
         error: e,
         onRetry: () => ref.invalidate(hospitalsProvider(query)),
       ),
-      data: (items) => items.isEmpty
-          ? const EmptyView(
-              icon: Icons.local_hospital_outlined,
-              title: 'រកមិនឃើញមន្ទីរពេទ្យ · No hospitals found',
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-              itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 14),
-              itemBuilder: (context, i) {
-                final h = items[i];
-                final distance = h['distanceKm'];
-                return Card(
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: () => context.push('/hospital/${h['id']}'),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        BannerImage(
-                          photoUrl: h['photoUrl'] as String?,
-                          height: 130,
-                          radius: 0,
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                h['name'] as String,
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w700),
-                              ),
-                              if (h['nameLatin'] != null)
-                                Text(
-                                  h['nameLatin'] as String,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .outline,
-                                  ),
-                                ),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 4,
-                                children: [
-                                  if (h['city'] != null)
-                                    TagChip(
-                                      h['city'] as String,
-                                      icon: Icons.place_outlined,
-                                    ),
-                                  if (distance != null)
-                                    TagChip(
-                                      '$distance km',
-                                      icon: Icons.near_me_outlined,
-                                      color: AppColors.blue,
-                                    ),
-                                  if (h['openingHours'] != null)
-                                    TagChip(
-                                      h['openingHours'] as String,
-                                      icon: Icons.schedule,
-                                      color: AppColors.navy,
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+      data: (res) {
+        final items = res.data;
+        if (items.isEmpty) {
+          return EmptyState(
+            art: Art.search,
+            title: context.t('រកមិនឃើញមន្ទីរពេទ្យ', 'No hospitals found'),
+          );
+        }
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(
+            Gap.page,
+            Gap.md,
+            Gap.page,
+            Gap.xl,
+          ),
+          children: [
+            if (res.fromCache) const OfflineBanner(),
+            for (final h in items) ...[
+              Tap(
+                onTap: () => context.push('/hospital/${h['id']}'),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: p.surface,
+                    borderRadius: BorderRadius.circular(Radii.lg),
+                    border: Border.all(color: p.line),
                   ),
-                );
-              },
-            ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      BannerImage(
+                        photoUrl: h['photoUrl'] as String?,
+                        height: 124,
+                        radius: 0,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              context.isKhmer
+                                  ? h['name'] as String
+                                  : ((h['nameLatin'] as String?) ??
+                                        h['name'] as String),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16.5,
+                                color: p.ink,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                if (h['city'] != null)
+                                  Pill(
+                                    h['city'] as String,
+                                    icon: Icons.place_outlined,
+                                  ),
+                                if (h['distanceKm'] != null)
+                                  Pill(
+                                    '${h['distanceKm']} km',
+                                    tone: Tone.blue,
+                                    icon: Icons.near_me_outlined,
+                                  ),
+                                if (h['openingHours'] != null)
+                                  Pill(
+                                    h['openingHours'] as String,
+                                    tone: Tone.teal,
+                                    icon: Icons.schedule_rounded,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+          ],
+        );
+      },
     );
   }
 }
+
+// ------------------------------------------------------------------ doctor detail
 
 final _doctorProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, String>((ref, id) async {
@@ -391,13 +558,10 @@ final _doctorProvider = FutureProvider.autoDispose
     });
 
 final _slotsProvider = FutureProvider.autoDispose
-    .family<List<DateTime>, ({String doctorId, String date})>((
-      ref,
-      args,
-    ) async {
+    .family<List<DateTime>, ({String doctorId, String date})>((ref, a) async {
       final res = await ref
           .read(apiClientProvider)
-          .get('/doctors/${args.doctorId}/slots', query: {'date': args.date});
+          .get('/doctors/${a.doctorId}/slots', query: {'date': a.date});
       return [
         for (final s in res as List)
           DateTime.parse((s as Map)['startsAt'] as String).toLocal(),
@@ -414,53 +578,62 @@ class DoctorDetailScreen extends ConsumerStatefulWidget {
 
 class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
   late DateTime _day = DateTime.now().add(const Duration(days: 1));
+  DateTime? _selected;
   bool _booking = false;
 
-  String get _dateKey => DateFormat('yyyy-MM-dd').format(_day);
+  String get _dateKey =>
+      '${_day.year}-${_day.month.toString().padLeft(2, '0')}-${_day.day.toString().padLeft(2, '0')}';
 
-  Future<void> _book(DateTime slot) async {
-    final reasonController = TextEditingController();
-    final confirmed = await showModalBottomSheet<bool>(
+  Future<void> _book() async {
+    final slot = _selected;
+    if (slot == null) return;
+    final reason = TextEditingController();
+    final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(
-          20,
+          Gap.page,
           4,
-          20,
-          MediaQuery.of(ctx).viewInsets.bottom + 20,
+          Gap.page,
+          MediaQuery.of(ctx).viewInsets.bottom + Gap.page,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'ស្នើសុំការណាត់ជួប',
-              style: Theme.of(ctx).textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w800),
+              ctx.t('បញ្ជាក់ការស្នើសុំ', 'Confirm your request'),
+              style: Theme.of(ctx).textTheme.titleLarge,
             ),
             const SizedBox(height: 4),
-            Text(DateFormat('EEEE, d MMM yyyy · HH:mm').format(slot)),
-            const SizedBox(height: 14),
+            Text(
+              '${ctx.fmt('EEEE d MMMM', slot)} · ${ctx.fmt('HH:mm', slot)}',
+              style: TextStyle(color: Palette.of(ctx).muted),
+            ),
+            const SizedBox(height: Gap.lg),
             TextField(
-              controller: reasonController,
+              controller: reason,
               maxLength: 200,
-              decoration: const InputDecoration(
-                labelText: 'មូលហេតុ (មិនចាំបាច់) · Reason (optional)',
-                helperText: 'Avoid sharing detailed medical information here.',
+              decoration: InputDecoration(
+                labelText: ctx.t('មូលហេតុ (មិនចាំបាច់)', 'Reason (optional)'),
+                helperText: ctx.t(
+                  'សូមកុំសរសេរព័ត៌មានវេជ្ជសាស្ត្រលម្អិត។',
+                  'Please avoid detailed medical information.',
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            FilledButton(
+            const SizedBox(height: Gap.sm),
+            PrimaryButton(
+              label: ctx.t('ផ្ញើសំណើ', 'Send request'),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('ផ្ញើសំណើ · Send request'),
             ),
           ],
         ),
       ),
     );
-    if (confirmed != true) return;
+    if (ok != true) return;
     setState(() => _booking = true);
     try {
       await ref
@@ -470,17 +643,19 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
             body: {
               'doctorId': widget.doctorId,
               'startsAt': slot.toUtc().toIso8601String(),
-              if (reasonController.text.trim().isNotEmpty)
-                'reason': reasonController.text.trim(),
+              if (reason.text.trim().isNotEmpty) 'reason': reason.text.trim(),
             },
           );
       ref.invalidate(appointmentsProvider);
       ref.invalidate(_slotsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Request sent. The doctor will confirm your appointment.',
+              context.t(
+                'បានផ្ញើសំណើ។ គ្រូពេទ្យនឹងបញ្ជាក់ក្នុងពេលឆាប់ៗ។',
+                'Request sent. The doctor will confirm soon.',
+              ),
             ),
           ),
         );
@@ -488,10 +663,10 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
       }
     } on AppException catch (e) {
       ref.invalidate(_slotsProvider);
-      if (mounted) {
+      setState(() => _selected = null);
+      if (mounted)
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(describeError(e))));
-      }
     } finally {
       if (mounted) setState(() => _booking = false);
     }
@@ -499,164 +674,310 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final p = Palette.of(context);
     final doctor = ref.watch(_doctorProvider(widget.doctorId));
     final slots = ref.watch(
       _slotsProvider((doctorId: widget.doctorId, date: _dateKey)),
     );
     return Scaffold(
-      appBar: AppBar(title: const Text('វេជ្ជបណ្ឌិត · Doctor')),
       body: doctor.when(
-        loading: () => const LoadingView(),
-        error: (e, _) => ErrorView(
+        loading: () => const SkeletonList(count: 3, itemHeight: 140),
+        error: (e, _) => ErrorState(
           error: e,
           onRetry: () => ref.invalidate(_doctorProvider(widget.doctorId)),
         ),
-        data: (d) => ListView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+        data: (d) => Stack(
           children: [
-            Center(
-              child: PersonAvatar(
-                name: d['fullName'] as String,
-                photoUrl: d['photoUrl'] as String?,
-                size: 120,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              d['fullName'] as String,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            if (d['nameLatin'] != null)
-              Text(
-                d['nameLatin'] as String,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Theme.of(context).colorScheme.outline),
-              ),
-            const SizedBox(height: 10),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                TagChip(specialtyLabel(d)),
-                if (d['yearsExperience'] != null)
-                  TagChip(
-                    '${d['yearsExperience']} ឆ្នាំ · yrs',
-                    icon: Icons.workspace_premium_outlined,
-                    color: AppColors.navy,
-                  ),
-                if (d['languages'] != null)
-                  TagChip(
-                    d['languages'] as String,
-                    icon: Icons.translate,
-                    color: AppColors.blue,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (d['hospitalName'] != null)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.local_hospital_outlined),
-                title: Text(d['hospitalName'] as String),
-                onTap: d['hospitalId'] == null
-                    ? null
-                    : () => context.push('/hospital/${d['hospitalId']}'),
-                trailing: const Icon(Icons.chevron_right),
-              ),
-            if (d['demo'] == true)
-              const NoticeBanner(
-                'ប្រវត្តិរូបគំរូ មិនមែនជាគ្រូពេទ្យពិតទេ · Sample profile for demonstration. Not a real doctor and not verified.',
-                warning: true,
-              )
-            else if (d['verificationStatus'] != 'VERIFIED')
-              const NoticeBanner(
-                'This clinician profile has not been verified by the platform.',
-                warning: true,
-              ),
-            if (d['bio'] != null) ...[
-              const SizedBox(height: 14),
-              Text(
-                'អំពីវេជ្ជបណ្ឌិត · About',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 6),
-              Text(d['bio'] as String, style: const TextStyle(height: 1.5)),
-              if (d['bioEn'] != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  d['bioEn'] as String,
-                  style: TextStyle(
-                    height: 1.5,
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-              ],
-            ],
-            const SizedBox(height: 22),
-            Text(
-              'ជ្រើសរើសពេលវេលា · Choose a time',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 76,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: 14,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, i) {
-                  final day = DateTime.now().add(Duration(days: i + 1));
-                  final selected =
-                      DateFormat('yyyy-MM-dd').format(day) == _dateKey;
-                  return ChoiceChip(
-                    selected: selected,
-                    label: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(DateFormat('EEE').format(day)),
-                        Text(
-                          DateFormat('d MMM').format(day),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+            CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  expandedHeight: 330,
+                  pinned: true,
+                  backgroundColor: p.paper,
+                  leading: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Tap(
+                      onTap: () => context.pop(),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: p.surface.withValues(alpha: 0.9),
+                          shape: BoxShape.circle,
                         ),
-                      ],
+                        child: Icon(Icons.arrow_back_rounded, color: p.ink),
+                      ),
                     ),
-                    onSelected: (_) => setState(() => _day = day),
-                  );
-                },
-              ),
+                  ),
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: Hero(
+                      tag: 'doctor-${d['id']}',
+                      child: Builder(
+                        builder: (context) {
+                          final url = mediaUrl(d['photoUrl'] as String?);
+                          return url == null
+                              ? Container(color: p.tealSoft)
+                              : Image.network(
+                                  url,
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.topCenter,
+                                );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: PageWidth(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        Gap.page,
+                        Gap.lg,
+                        Gap.page,
+                        120,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            doctorTitle(context, d),
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          if (doctorSubtitle(context, d) != null)
+                            Text(
+                              doctorSubtitle(context, d)!,
+                              style: TextStyle(color: p.muted),
+                            ),
+                          const SizedBox(height: 8),
+                          Text(
+                            specialtyOf(context, d),
+                            style: TextStyle(
+                              color: p.tealDeep,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: Gap.lg),
+                          Surface(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            child: IntrinsicHeight(
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Stat(
+                                      value: '${d['yearsExperience'] ?? '—'}',
+                                      caption: context.t(
+                                        'ឆ្នាំបទពិសោធន៍',
+                                        'Years',
+                                      ),
+                                    ),
+                                  ),
+                                  VerticalDivider(color: p.line, width: 1),
+                                  Expanded(
+                                    child: Stat(
+                                      value:
+                                          (d['languages'] as String?)
+                                              ?.split(',')
+                                              .length
+                                              .toString() ??
+                                          '—',
+                                      caption: context.t('ភាសា', 'Languages'),
+                                    ),
+                                  ),
+                                  VerticalDivider(color: p.line, width: 1),
+                                  Expanded(
+                                    child: Stat(
+                                      value:
+                                          d['verificationStatus'] == 'VERIFIED'
+                                          ? context.t(
+                                              'បានផ្ទៀងផ្ទាត់',
+                                              'Verified',
+                                            )
+                                          : context.t('គំរូ', 'Sample'),
+                                      caption: context.t('ស្ថានភាព', 'Status'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (d['demo'] == true) ...[
+                            const SizedBox(height: Gap.md),
+                            Notice(
+                              context.t(
+                                'នេះជាប្រវត្តិរូបគំរូសម្រាប់បង្ហាញកម្មវិធី មិនមែនជាគ្រូពេទ្យពិតទេ។',
+                                'Sample profile for demonstration. Not a real doctor and not verified.',
+                              ),
+                              tone: Tone.amber,
+                            ),
+                          ],
+                          const SizedBox(height: Gap.xl),
+                          if (d['hospitalName'] != null)
+                            InfoRow(
+                              icon: Icons.local_hospital_outlined,
+                              label: context.t('ទីតាំងធ្វើការ', 'Works at'),
+                              value: d['hospitalName'] as String,
+                              onTap: d['hospitalId'] == null
+                                  ? null
+                                  : () => context.push(
+                                      '/hospital/${d['hospitalId']}',
+                                    ),
+                            ),
+                          if (d['languages'] != null)
+                            InfoRow(
+                              icon: Icons.translate_rounded,
+                              label: context.t('ភាសា', 'Languages'),
+                              value: d['languages'] as String,
+                            ),
+                          const SizedBox(height: Gap.lg),
+                          SectionHeader(context.t('អំពីគ្រូពេទ្យ', 'About')),
+                          Text(
+                            context.isKhmer
+                                ? (d['bio'] as String? ?? '')
+                                : ((d['bioEn'] as String?) ??
+                                      (d['bio'] as String? ?? '')),
+                            style: TextStyle(height: 1.6, color: p.inkSoft),
+                          ),
+                          const SizedBox(height: Gap.xl),
+                          SectionHeader(
+                            context.t('ជ្រើសរើសពេលណាត់ជួប', 'Pick a time'),
+                          ),
+                          SizedBox(
+                            height: 74,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: 14,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(width: 8),
+                              itemBuilder: (context, i) {
+                                final day = DateTime.now().add(
+                                  Duration(days: i + 1),
+                                );
+                                final sel =
+                                    day.day == _day.day &&
+                                    day.month == _day.month;
+                                return Tap(
+                                  onTap: () => setState(() {
+                                    _day = day;
+                                    _selected = null;
+                                  }),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 160),
+                                    width: 58,
+                                    decoration: BoxDecoration(
+                                      color: sel ? p.ink : p.surface,
+                                      borderRadius: BorderRadius.circular(
+                                        Radii.md,
+                                      ),
+                                      border: Border.all(
+                                        color: sel ? p.ink : p.line,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          context.fmt('EEE', day),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: sel
+                                                ? p.paper.withValues(alpha: .8)
+                                                : p.muted,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${day.day}',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w800,
+                                            color: sel ? p.paper : p.ink,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: Gap.lg),
+                          slots.when(
+                            loading: () => Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (var i = 0; i < 6; i++)
+                                  const Skeleton(
+                                    width: 82,
+                                    height: 46,
+                                    radius: 14,
+                                  ),
+                              ],
+                            ),
+                            error: (e, _) => ErrorState(
+                              error: e,
+                              onRetry: () => ref.invalidate(
+                                _slotsProvider((
+                                  doctorId: widget.doctorId,
+                                  date: _dateKey,
+                                )),
+                              ),
+                            ),
+                            data: (times) => times.isEmpty
+                                ? Notice(
+                                    context.t(
+                                      'គ្មានពេលទំនេរនៅថ្ងៃនេះ សូមជ្រើសថ្ងៃផ្សេង។',
+                                      'No free times this day. Try another day.',
+                                    ),
+                                  )
+                                : Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      for (final t in times)
+                                        TimeTile(
+                                          label: context.fmt('HH:mm', t),
+                                          selected: _selected == t,
+                                          onTap: () =>
+                                              setState(() => _selected = t),
+                                        ),
+                                    ],
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 14),
-            slots.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(24),
-                child: LoadingView(),
-              ),
-              error: (e, _) => ErrorView(
-                error: e,
-                onRetry: () => ref.invalidate(
-                  _slotsProvider((doctorId: widget.doctorId, date: _dateKey)),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                offset: _selected == null ? const Offset(0, 1.2) : Offset.zero,
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(
+                    Gap.page,
+                    12,
+                    Gap.page,
+                    MediaQuery.of(context).padding.bottom + 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: p.surface,
+                    border: Border(top: BorderSide(color: p.line)),
+                  ),
+                  child: PrimaryButton(
+                    label: _selected == null
+                        ? ''
+                        : '${context.t('ណាត់ជួបម៉ោង', 'Book')} ${context.fmt('HH:mm', _selected!)}',
+                    busy: _booking,
+                    onPressed: _selected == null ? null : _book,
+                  ),
                 ),
               ),
-              data: (times) => times.isEmpty
-                  ? const EmptyView(
-                      icon: Icons.event_busy,
-                      title: 'គ្មានពេលទំនេរ · No free times on this day',
-                      message: 'Try another day.',
-                    )
-                  : Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final t in times)
-                          ActionChip(
-                            label: Text(DateFormat('HH:mm').format(t)),
-                            onPressed: _booking ? null : () => _book(t),
-                          ),
-                      ],
-                    ),
             ),
           ],
         ),
@@ -664,6 +985,8 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
     );
   }
 }
+
+// ------------------------------------------------------------------ hospital detail
 
 final _hospitalProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, String>((ref, id) async {
@@ -678,12 +1001,14 @@ class HospitalDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = Palette.of(context);
     final hospital = ref.watch(_hospitalProvider(hospitalId));
+    final doctors = ref.watch(_hospitalDoctorsProvider(hospitalId));
     return Scaffold(
-      appBar: AppBar(title: const Text('មន្ទីរពេទ្យ · Hospital')),
+      appBar: AppBar(title: Text(context.t('មន្ទីរពេទ្យ', 'Hospital'))),
       body: hospital.when(
-        loading: () => const LoadingView(),
-        error: (e, _) => ErrorView(
+        loading: () => const SkeletonList(count: 3, itemHeight: 150),
+        error: (e, _) => ErrorState(
           error: e,
           onRetry: () => ref.invalidate(_hospitalProvider(hospitalId)),
         ),
@@ -693,75 +1018,157 @@ class HospitalDetailScreen extends ConsumerWidget {
           );
           final lat = (h['latitude'] as num?)?.toDouble();
           final lon = (h['longitude'] as num?)?.toDouble();
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-            children: [
-              BannerImage(photoUrl: h['photoUrl'] as String?, height: 180),
-              const SizedBox(height: 16),
-              Text(
-                h['name'] as String,
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w800),
+          final name = context.isKhmer
+              ? h['name'] as String
+              : ((h['nameLatin'] as String?) ?? h['name'] as String);
+          return PageWidth(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                Gap.page,
+                0,
+                Gap.page,
+                Gap.xxl,
               ),
-              if (h['nameLatin'] != null)
-                Text(
-                  h['nameLatin'] as String,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.outline,
+              children: [
+                BannerImage(
+                  photoUrl: h['photoUrl'] as String?,
+                  height: 180,
+                  radius: Radii.lg,
+                ),
+                const SizedBox(height: Gap.lg),
+                Text(name, style: Theme.of(context).textTheme.headlineSmall),
+                if (h['demo'] == true) ...[
+                  const SizedBox(height: Gap.md),
+                  Notice(
+                    context.t(
+                      'ទិន្នន័យគំរូ សមត្ថភាព និងភាពទំនេរមិនមែនជាការពិតទេ។',
+                      'Sample record. Capabilities and availability are not real.',
+                    ),
+                    tone: Tone.amber,
                   ),
-                ),
-              const SizedBox(height: 12),
-              if (h['demo'] == true)
-                const NoticeBanner(
-                  'ទិន្នន័យគំរូ សមត្ថភាព និងភាពទំនេរមិនមែនជាការពិតទេ · Sample record. Capabilities and availability are not real.',
-                  warning: true,
-                ),
-              const SizedBox(height: 8),
-              if (h['address'] != null)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.place_outlined),
-                  title: Text('${h['address']}'),
-                  subtitle: Text('${h['city'] ?? ''}'),
-                ),
-              if (h['openingHours'] != null)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.schedule),
-                  title: Text('${h['openingHours']}'),
-                ),
-              if (h['phone'] != null)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.call_outlined),
-                  title: Text(h['phone'] as String),
-                  onTap: () =>
-                      launchUrl(Uri(scheme: 'tel', path: h['phone'] as String)),
-                ),
-              if (lat != null && lon != null)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.map_outlined),
-                  title: const Text('បើកផែនទី · Open in maps'),
-                  onTap: () => launchUrl(
-                    Uri.parse('geo:$lat,$lon?q=$lat,$lon'),
-                    mode: LaunchMode.externalApplication,
+                ],
+                const SizedBox(height: Gap.md),
+                if (h['address'] != null)
+                  InfoRow(
+                    icon: Icons.place_outlined,
+                    label: context.t('អាសយដ្ឋាន', 'Address'),
+                    value: '${h['address']}',
                   ),
-                ),
-              if (departments.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                Text(
-                  'ផ្នែក · Departments',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [for (final d in departments) TagChip(d)],
+                if (h['openingHours'] != null)
+                  InfoRow(
+                    icon: Icons.schedule_rounded,
+                    label: context.t('ម៉ោងបើក', 'Hours'),
+                    value: '${h['openingHours']}',
+                  ),
+                if (h['phone'] != null)
+                  InfoRow(
+                    icon: Icons.call_outlined,
+                    label: context.t('ទូរស័ព្ទ', 'Phone'),
+                    value: h['phone'] as String,
+                    onTap: () => launchUrl(
+                      Uri(scheme: 'tel', path: h['phone'] as String),
+                    ),
+                  ),
+                if (lat != null && lon != null) ...[
+                  const SizedBox(height: Gap.md),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(Radii.lg),
+                    child: SizedBox(
+                      height: 190,
+                      child: FlutterMap(
+                        options: MapOptions(
+                          initialCenter: LatLng(lat, lon),
+                          initialZoom: 14,
+                          interactionOptions: const InteractionOptions(
+                            flags:
+                                InteractiveFlag.pinchZoom |
+                                InteractiveFlag.drag,
+                          ),
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName:
+                                'com.sengchhun.healthresponse',
+                          ),
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                point: LatLng(lat, lon),
+                                width: 44,
+                                height: 44,
+                                child: Icon(
+                                  Icons.location_on_rounded,
+                                  color: p.red,
+                                  size: 44,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const RichAttributionWidget(
+                            attributions: [
+                              TextSourceAttribution(
+                                '© OpenStreetMap contributors',
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: Gap.sm),
+                  GhostButton(
+                    compact: true,
+                    icon: Icons.directions_rounded,
+                    label: context.t(
+                      'បើកក្នុងកម្មវិធីផែនទី',
+                      'Open in maps app',
+                    ),
+                    onPressed: () => launchUrl(
+                      Uri.parse('geo:$lat,$lon?q=$lat,$lon'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                  ),
+                ],
+                if (departments.isNotEmpty) ...[
+                  const SizedBox(height: Gap.xl),
+                  SectionHeader(
+                    context.t('ផ្នែក', 'Departments'),
+                    count: departments.length,
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final d in departments) Pill(d, tone: Tone.teal),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: Gap.xl),
+                SectionHeader(context.t('គ្រូពេទ្យនៅទីនេះ', 'Doctors here')),
+                doctors.when(
+                  loading: () => const Skeleton(height: 92, radius: Radii.lg),
+                  error: (e, _) => Text(describeError(e)),
+                  data: (list) => list.isEmpty
+                      ? Text(
+                          context.t(
+                            'មិនទាន់មានគ្រូពេទ្យ',
+                            'No doctors listed yet',
+                          ),
+                          style: TextStyle(color: p.muted),
+                        )
+                      : Column(
+                          children: [
+                            for (final d in list)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: DoctorRow(doctor: d),
+                              ),
+                          ],
+                        ),
                 ),
               ],
-            ],
+            ),
           );
         },
       ),

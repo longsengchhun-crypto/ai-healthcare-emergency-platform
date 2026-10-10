@@ -107,6 +107,17 @@ class SecurityAndRecordsIntegrationTest {
     }
 
     @Test
+    void patientCanSeeWhoAccessedTheirRecords() throws Exception {
+        String patient = login(DemoDataSeeder.PATIENT);
+        String doctor = login(DemoDataSeeder.DOCTOR);
+        String patientProfile = call(get("/api/v1/patients/me"), patient, null, 200).get("id").asText();
+        call(get("/api/v1/medical-records?patientId=" + patientProfile), doctor, null, 200); // confirmed visit exists
+        JsonNode activity = call(get("/api/v1/patients/me/activity"), patient, null, 200);
+        assertThat(activity.toString()).contains("RECORD_LIST");
+        assertThat(activity.get(0).get("actorRole").asText()).isEqualTo("DOCTOR");
+    }
+
+    @Test
     void clinicianAuthoredRecordsCannotBeAlteredByPatientsOnlyAmendedByAuthor() throws Exception {
         String patient = login(DemoDataSeeder.PATIENT);
         String doctor = login(DemoDataSeeder.DOCTOR);

@@ -115,4 +115,29 @@ public class PatientService {
                 .list();
         return Map.of("recordAccessGrants", grants);
     }
+
+    /** Who else accessed this patient's records or profile, newest first (the patient's own actions are excluded). */
+    public List<Map<String, Object>> activity(AuthPrincipal p) {
+        UUID patientId = patientIdFor(p.userId());
+        return jdbc.sql("""
+                SELECT a.action, a.outcome, a.actor_role, a.created_at, u.full_name
+                FROM audit_logs a LEFT JOIN users u ON u.id = a.actor_id
+                WHERE (a.actor_id IS NULL OR a.actor_id <> :uid)
+                  AND (a.action LIKE 'RECORD_%' OR a.action LIKE 'DOCUMENT_%' OR a.action LIKE 'ACCESS_%'
+                       OR a.action LIKE 'EMERGENCY_VIEW%')
+                  AND ((a.target_type = 'PATIENT' AND a.target_id = :pid)
+                       OR (a.target_type = 'MEDICAL_RECORD' AND a.target_id IN
+                           (SELECT CAST(r.id AS VARCHAR) FROM medical_records r WHERE r.patient_id = :patient)))
+                ORDER BY a.created_at DESC LIMIT 40""")
+                .param("uid", p.userId()).param("pid", patientId.toString()).param("patient", patientId)
+                .query((rs, n) -> {
+                    java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+                    row.put("action", rs.getString("action"));
+                    row.put("outcome", rs.getString("outcome"));
+                    row.put("actorRole", rs.getString("actor_role"));
+                    row.put("actorName", rs.getString("full_name"));
+                    row.put("at", Sql.instant(rs, "created_at"));
+                    return row;
+                }).list();
+    }
 }

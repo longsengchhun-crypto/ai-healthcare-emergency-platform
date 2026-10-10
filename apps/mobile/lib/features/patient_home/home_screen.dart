@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
-import '../../core/theme/app_theme.dart';
-import '../../core/widgets/media.dart';
+import '../../core/design/kit.dart';
+import '../../core/design/kit_extra.dart';
+import '../../core/design/palette.dart';
+import '../../core/i18n/language.dart';
 import '../appointments/appointments_screen.dart';
 import '../authentication/auth_controller.dart';
 import '../doctor_directory/discover_screens.dart';
@@ -18,11 +19,12 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = Palette.of(context);
     final user = ref.watch(authControllerProvider).user;
     final emergency = ref.watch(emergencyControllerProvider);
     final appts = ref.watch(appointmentsProvider).value ?? const [];
     final reminders = ref.watch(remindersProvider).value ?? const [];
-    final doctors = ref.watch(doctorsProvider('')).value ?? const [];
+    final doctors = ref.watch(doctorsProvider('')).value?.data ?? const [];
     final unread =
         (ref.watch(notificationsProvider).value?['unread'] as int?) ?? 0;
     final isPatient = user?.isPatient ?? false;
@@ -40,17 +42,18 @@ class HomeScreen extends ConsumerWidget {
             (a, b) =>
                 (a['startsAt'] as String).compareTo(b['startsAt'] as String),
           );
+    final todaysReminders = reminders.where((r) => r['active'] == true).toList()
+      ..sort(
+        (a, b) =>
+            (a['timeOfDay'] as String).compareTo(b['timeOfDay'] as String),
+      );
 
     final hour = DateTime.now().hour;
-    final greetingKm = hour < 12
-        ? 'អរុណសួស្តី'
-        : (hour < 18 ? 'សួស្តីសាយណ្ហ' : 'សុខសាន្តសាយណ្ហ');
-    final greetingEn = hour < 12
-        ? 'Good morning'
-        : (hour < 18 ? 'Good afternoon' : 'Good evening');
-    final activeReminders = reminders
-        .where((r) => r['active'] == true)
-        .toList();
+    final greeting = hour < 12
+        ? context.t('អរុណសួស្តី', 'Good morning')
+        : hour < 18
+        ? context.t('សួស្តីពេលរសៀល', 'Good afternoon')
+        : context.t('សួស្តីពេលល្ងាច', 'Good evening');
 
     return Scaffold(
       body: RefreshIndicator(
@@ -60,169 +63,257 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(notificationsProvider);
           ref.invalidate(doctorsProvider(''));
         },
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            // ---- header
-            Container(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                MediaQuery.of(context).padding.top + 16,
-                20,
-                22,
+        child: SafeArea(
+          bottom: false,
+          child: PageWidth(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                Gap.page,
+                Gap.md,
+                Gap.page,
+                Gap.xxl,
               ),
-              decoration: const BoxDecoration(
-                color: AppColors.navy,
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(28),
+              children: [
+                // ---- masthead
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        context.fmt('EEEE d MMMM', DateTime.now()),
+                        style: TextStyle(
+                          color: p.muted,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    LanguageToggle(
+                      isKhmer: context.isKhmer,
+                      onChanged: (c) => languageController.set(c),
+                    ),
+                    const SizedBox(width: 6),
+                    Tap(
+                      onTap: () => context.push('/notifications'),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Badge(
+                          isLabelVisible: unread > 0,
+                          smallSize: 9,
+                          backgroundColor: p.red,
+                          child: Icon(
+                            Icons.notifications_none_rounded,
+                            color: p.ink,
+                            size: 26,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              child: Row(
-                children: [
-                  PersonAvatar(name: user?.fullName ?? '?', size: 52),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '$greetingKm · $greetingEn',
-                          style: const TextStyle(
-                            color: Color(0xFFB9D3E3),
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          user?.fullName ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 21,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Notifications',
-                    onPressed: () => context.push('/notifications'),
-                    icon: Badge(
-                      isLabelVisible: unread > 0,
-                      label: Text('$unread'),
-                      child: const Icon(
-                        Icons.notifications_none_rounded,
-                        color: Colors.white,
+                const SizedBox(height: Gap.sm),
+                Text(
+                  '$greeting,',
+                  style: TextStyle(color: p.inkSoft, fontSize: 17, height: 1.4),
+                ),
+                Text(
+                  user?.fullName ?? '',
+                  style: Theme.of(context).textTheme.displaySmall,
+                ),
+                const SizedBox(height: Gap.xl),
+
+                // ---- next appointment
+                SectionHeader(
+                  isPatient
+                      ? context.t('ការណាត់ជួបបន្ទាប់', 'Next appointment')
+                      : context.t('កាលវិភាគបន្ទាប់', 'Next on your schedule'),
+                  action: context.t('មើលទាំងអស់', 'See all'),
+                  onAction: () => context.go('/appointments'),
+                ),
+                _NextAppointment(
+                  appointment: upcoming.isEmpty ? null : upcoming.first,
+                  isPatient: isPatient,
+                ),
+                const SizedBox(height: Gap.xl),
+
+                if (isPatient) ...[
+                  // ---- shortcuts
+                  Row(
+                    children: [
+                      _Shortcut(
+                        Icons.search_rounded,
+                        context.t('រកគ្រូពេទ្យ', 'Find a doctor'),
+                        () => context.go('/discover'),
                       ),
-                    ),
+                      _Shortcut(
+                        Icons.folder_open_rounded,
+                        context.t('កំណត់ត្រា', 'My records'),
+                        () => context.push('/records'),
+                      ),
+                      _Shortcut(
+                        Icons.medication_rounded,
+                        context.t('ថ្នាំ', 'Medicines'),
+                        () => context.push('/medications'),
+                      ),
+                      _Shortcut(
+                        Icons.auto_awesome_rounded,
+                        context.t('ជំនួយ', 'Assistant'),
+                        () => context.push('/assistant'),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (isPatient) ...[
-                    _EmergencyCard(state: emergency),
-                    const SizedBox(height: 22),
-                  ],
-                  _SectionTitle(
-                    isPatient
-                        ? 'ការណាត់ជួបបន្ទាប់ · Next visit'
-                        : 'កាលវិភាគ · Schedule',
+                  const SizedBox(height: Gap.xl),
+
+                  // ---- emergency (quiet by default; red only when something is in progress)
+                  _EmergencyStrip(state: emergency),
+                  const SizedBox(height: Gap.xl),
+
+                  // ---- doctors
+                  SectionHeader(
+                    context.t('គ្រូពេទ្យណែនាំ', 'Doctors'),
+                    action: context.t('ទាំងអស់', 'All'),
+                    onAction: () => context.go('/discover'),
                   ),
-                  const SizedBox(height: 10),
-                  _NextAppointment(
-                    appointment: upcoming.isEmpty ? null : upcoming.first,
-                    isPatient: isPatient,
-                  ),
-                  if (isPatient) ...[
-                    const SizedBox(height: 22),
-                    _SectionTitle('សេវាកម្ម · Services'),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _Action(
-                          Icons.search,
-                          'រកគ្រូពេទ្យ',
-                          'Doctors',
-                          () => context.go('/discover'),
-                        ),
-                        _Action(
-                          Icons.folder_shared_outlined,
-                          'កំណត់ត្រា',
-                          'Records',
-                          () => context.push('/records'),
-                        ),
-                        _Action(
-                          Icons.medication_outlined,
-                          'ថ្នាំ',
-                          'Medicine',
-                          () => context.push('/medications'),
-                        ),
-                        _Action(
-                          Icons.auto_awesome_outlined,
-                          'ជំនួយ',
-                          'Assistant',
-                          () => context.push('/assistant'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    _SectionTitle('វេជ្ជបណ្ឌិតណែនាំ · Doctors'),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      height: 168,
-                      child: doctors.isEmpty
-                          ? const Center(child: CircularProgressIndicator())
-                          : ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: doctors.length > 8
-                                  ? 8
-                                  : doctors.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(width: 10),
-                              itemBuilder: (context, i) =>
-                                  DoctorCard(doctor: doctors[i], compact: true),
-                            ),
-                    ),
-                    const SizedBox(height: 24),
-                    _SectionTitle('ការរំលឹកថ្នាំ · Medicine reminders'),
-                    const SizedBox(height: 10),
-                    if (activeReminders.isEmpty)
-                      const Text('មិនទាន់មានការរំលឹក · No active reminders.')
-                    else
-                      Card(
-                        child: Column(
-                          children: [
-                            for (final r in activeReminders.take(3))
-                              ListTile(
-                                leading: const CircleAvatar(
-                                  backgroundColor: Color(0xFFE3F1F1),
-                                  child: Icon(
-                                    Icons.alarm,
-                                    color: AppColors.teal,
+                  SizedBox(
+                    height: 220,
+                    child: doctors.isEmpty
+                        ? ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              for (var i = 0; i < 3; i++)
+                                const Padding(
+                                  padding: EdgeInsets.only(right: 12),
+                                  child: Skeleton(
+                                    width: 132,
+                                    height: 200,
+                                    radius: 22,
                                   ),
                                 ),
-                                title: Text('${r['medicationName']}'),
-                                subtitle: Text('ជារៀងរាល់ថ្ងៃ · Daily'),
-                                trailing: Text(
-                                  (r['timeOfDay'] as String).substring(0, 5),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 16,
-                                  ),
-                                ),
+                            ],
+                          )
+                        : ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: doctors.length > 8 ? 8 : doctors.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (context, i) =>
+                                DoctorTile(doctor: doctors[i]),
+                          ),
+                  ),
+                  const SizedBox(height: Gap.xl),
+
+                  // ---- medicine timeline
+                  SectionHeader(
+                    context.t('ថ្នាំថ្ងៃនេះ', 'Medicines today'),
+                    count: todaysReminders.length,
+                  ),
+                  if (todaysReminders.isEmpty)
+                    Surface(
+                      onTap: () => context.push('/medications'),
+                      child: Row(
+                        children: [
+                          Icon(Icons.add_alarm_rounded, color: p.teal),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              context.t(
+                                'មិនទាន់មានការរំលឹក។ ចុចដើម្បីបន្ថែម។',
+                                'No reminders yet. Tap to add one.',
                               ),
-                          ],
-                        ),
+                            ),
+                          ),
+                        ],
                       ),
-                  ],
+                    )
+                  else
+                    Surface(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Gap.lg,
+                        vertical: 6,
+                      ),
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < todaysReminders.length; i++) ...[
+                            if (i > 0) Divider(color: p.line),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 56,
+                                    child: Text(
+                                      (todaysReminders[i]['timeOfDay']
+                                              as String)
+                                          .substring(0, 5),
+                                      style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w800,
+                                        color: p.ink,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      '${todaysReminders[i]['medicationName']}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.alarm_rounded,
+                                    size: 18,
+                                    color: p.muted,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                 ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Shortcut extends StatelessWidget {
+  const _Shortcut(this.icon, this.label, this.onTap);
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Palette.of(context);
+    return Expanded(
+      child: Tap(
+        onTap: onTap,
+        child: Column(
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                color: p.tealSoft,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(icon, color: p.tealDeep, size: 26),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: p.inkSoft,
+                height: 1.35,
               ),
             ),
           ],
@@ -230,62 +321,6 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: Theme.of(context).textTheme.titleMedium
-        ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.1),
-  );
-}
-
-class _Action extends StatelessWidget {
-  const _Action(this.icon, this.km, this.en, this.onTap);
-  final IconData icon;
-  final String km;
-  final String en;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.teal.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Icon(icon, color: AppColors.teal),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              km,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-            ),
-            Text(
-              en,
-              style: TextStyle(
-                fontSize: 11,
-                color: Theme.of(context).colorScheme.outline,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }
 
 class _NextAppointment extends StatelessWidget {
@@ -295,14 +330,37 @@ class _NextAppointment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = Palette.of(context);
     final a = appointment;
     if (a == null) {
-      return Card(
-        child: ListTile(
-          leading: const Icon(Icons.event_available_outlined),
-          title: const Text('មិនមានការណាត់ជួប · Nothing scheduled'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.go(isPatient ? '/discover' : '/appointments'),
+      return Surface(
+        onTap: () => context.go(isPatient ? '/discover' : '/appointments'),
+        child: Row(
+          children: [
+            Icon(Icons.event_available_rounded, color: p.teal, size: 28),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.t('មិនទាន់មានការណាត់ជួប', 'Nothing booked'),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    isPatient
+                        ? context.t(
+                            'ស្វែងរកគ្រូពេទ្យ ហើយណាត់ជួបបានភ្លាម។',
+                            'Find a doctor and book in a minute.',
+                          )
+                        : context.t('មិនមានសំណើថ្មី។', 'No new requests.'),
+                    style: TextStyle(color: p.muted, height: 1.45),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: p.muted),
+          ],
         ),
       );
     }
@@ -310,138 +368,118 @@ class _NextAppointment extends StatelessWidget {
     final name = isPatient
         ? a['doctorName'] as String
         : a['patientName'] as String;
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => context.go('/appointments'),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Container(
-                width: 58,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.navy,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      DateFormat('d').format(start),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      DateFormat('MMM').format(start),
-                      style: const TextStyle(
-                        color: Color(0xFFB9D3E3),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${DateFormat('EEE, HH:mm').format(start)} · ${a['status'] == 'CONFIRMED' ? 'បានបញ្ជាក់ · Confirmed' : 'កំពុងរង់ចាំ · Pending'}',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (isPatient)
-                PersonAvatar(
-                  name: name,
-                  photoUrl: a['doctorPhotoUrl'] as String?,
-                  size: 46,
-                ),
-            ],
+    final confirmed = a['status'] == 'CONFIRMED';
+    return Surface(
+      onTap: () => context.go('/appointments'),
+      child: Row(
+        children: [
+          DateBlock(
+            day: '${start.day}',
+            month: context.fmt('MMM', start),
+            highlight: true,
           ),
-        ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.fmt('HH:mm', start),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: p.ink,
+                    height: 1.2,
+                  ),
+                ),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 6),
+                Pill(
+                  confirmed
+                      ? context.t('បានបញ្ជាក់', 'Confirmed')
+                      : context.t('កំពុងរង់ចាំ', 'Waiting for confirmation'),
+                  tone: confirmed ? Tone.green : Tone.blue,
+                ),
+              ],
+            ),
+          ),
+          if (isPatient)
+            Portrait(
+              name: name,
+              photoUrl: a['doctorPhotoUrl'] as String?,
+              width: 62,
+              height: 74,
+              radius: 16,
+            ),
+        ],
       ),
     );
   }
 }
 
-class _EmergencyCard extends StatelessWidget {
-  const _EmergencyCard({required this.state});
+class _EmergencyStrip extends StatelessWidget {
+  const _EmergencyStrip({required this.state});
   final EmergencyState state;
 
   @override
   Widget build(BuildContext context) {
-    final active = state.phase == EmergencyPhase.active && state.event != null;
-    return InkWell(
-      borderRadius: BorderRadius.circular(22),
+    final p = Palette.of(context);
+    final active =
+        state.phase == EmergencyPhase.active &&
+        state.event != null &&
+        !(state.event!.isTerminal);
+    return Surface(
+      color: active ? p.redSoft : p.surface,
+      borderColor: active ? p.red.withValues(alpha: 0.4) : p.line,
       onTap: () => context.go('/emergency'),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          gradient: const LinearGradient(
-            colors: [Color(0xFFD92D20), Color(0xFFB42318)],
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(color: p.redSoft, shape: BoxShape.circle),
+            child: Icon(Icons.emergency_rounded, color: p.red, size: 22),
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.emergency_share_rounded,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    active
-                        ? 'ស្ថានភាពសង្គ្រោះបន្ទាន់ · In progress'
-                        : 'ត្រូវការជំនួយបន្ទាន់? · Need urgent help?',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                    ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  active
+                      ? context.t(
+                          'សំណើសង្គ្រោះបន្ទាន់កំពុងដំណើរការ',
+                          'Emergency request in progress',
+                        )
+                      : context.t('ជំនួយបន្ទាន់', 'Emergency help'),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: active ? p.red : p.ink,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    active ? describeEmergencyStatus(state.event!.status) : 'ចុចដើម្បីបើកផ្ទាំងសង្គ្រោះបន្ទាន់ · Tap to open the emergency screen',
-                    style: const TextStyle(
-                      color: Color(0xFFFFE4E1),
-                      fontSize: 13,
-                    ),
+                ),
+                Text(
+                  active
+                      ? describeEmergencyStatus(state.event!.status)
+                      : context.t(
+                          'ចុចសង្គ្រោះបន្ទាន់ ហើយសង្កត់ដើម្បីស្នើសុំជំនួយ។',
+                          'Open Emergency and hold the button to ask for help.',
+                        ),
+                  style: TextStyle(
+                    color: p.muted,
+                    height: 1.45,
+                    fontSize: 13.5,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const Icon(Icons.chevron_right, color: Colors.white),
-          ],
-        ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: p.muted),
+        ],
       ),
     );
   }

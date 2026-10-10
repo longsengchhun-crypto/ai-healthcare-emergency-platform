@@ -62,7 +62,7 @@ docker compose -f infrastructure/docker-compose.yml --env-file .env up --build
 ## Build and test
 
 ```bash
-cd backend && mvn verify                       # 47 tests, H2 + embedded real PostgreSQL
+cd backend && mvn verify                       # 49 tests, H2 + embedded real PostgreSQL
 cd apps/mobile && flutter analyze && flutter test
 cd apps/dashboard && flutter analyze && flutter test
 cd apps/mobile && flutter build apk --debug
@@ -74,6 +74,6 @@ Live contract test (mobile client ↔ running backend):
 
 ## Documentation
 
-Push / SMS / email setup: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). Start at [docs/SYSTEM_ARCHITECTURE.md](docs/SYSTEM_ARCHITECTURE.md). Release steps:
+Brief-vs-reality check: [docs/BRIEF_TRACEABILITY.md](docs/BRIEF_TRACEABILITY.md). Design previews: `docs/design-preview/`. Push / SMS / email setup: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). Start at [docs/SYSTEM_ARCHITECTURE.md](docs/SYSTEM_ARCHITECTURE.md). Release steps:
 [docs/PLAY_STORE_RELEASE.md](docs/PLAY_STORE_RELEASE.md). Verified results:
 [docs/TESTING_REPORT.md](docs/TESTING_REPORT.md).

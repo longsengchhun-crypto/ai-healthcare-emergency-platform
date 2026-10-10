@@ -64,4 +64,7 @@ public class PatientController {
 
     @GetMapping("/privacy")
     public Map<String, Object> privacy(@AuthenticationPrincipal AuthPrincipal p) { return service.privacySummary(p); }
+
+    @GetMapping("/activity")
+    public List<Map<String, Object>> activity(@AuthenticationPrincipal AuthPrincipal p) { return service.activity(p); }
 }

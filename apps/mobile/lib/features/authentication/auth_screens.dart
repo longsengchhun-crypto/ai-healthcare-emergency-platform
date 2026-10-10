@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/design/kit.dart';
+import '../../core/design/kit_extra.dart';
+import '../../core/design/palette.dart';
 import '../../core/errors/app_exception.dart';
+import '../../core/i18n/language.dart';
 import '../../core/network/providers.dart';
-import '../../core/theme/app_theme.dart';
 import 'auth_controller.dart';
 
 /// Client-side validators. The server re-validates everything; these only give fast feedback.
@@ -37,58 +40,96 @@ class Validators {
   }
 }
 
-class _AuthScaffold extends StatelessWidget {
-  const _AuthScaffold({required this.title, required this.child});
+class _AuthFrame extends StatelessWidget {
+  const _AuthFrame({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+    this.back = false,
+  });
   final String title;
+  final String subtitle;
   final Widget child;
+  final bool back;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.navy,
-                        borderRadius: BorderRadius.circular(14),
+  Widget build(BuildContext context) {
+    final p = Palette.of(context);
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              Gap.page + 4,
+              Gap.lg,
+              Gap.page + 4,
+              Gap.xl,
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      if (back)
+                        Tap(
+                          onTap: () => context.pop(),
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: Icon(Icons.arrow_back_rounded, color: p.ink),
+                          ),
+                        ),
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: p.ink,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.favorite_rounded,
+                          color: p.paper,
+                          size: 20,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.health_and_safety_rounded,
-                        color: Colors.white,
+                      const SizedBox(width: 10),
+                      Text(
+                        'HealthResponse',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 17,
+                          color: p.ink,
+                        ),
                       ),
+                      const Spacer(),
+                      LanguageToggle(
+                        isKhmer: context.isKhmer,
+                        onChanged: (c) => languageController.set(c),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 44),
+                  Text(title, style: Theme.of(context).textTheme.displaySmall),
+                  const SizedBox(height: 8),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: p.muted,
+                      fontSize: 15.5,
+                      height: 1.5,
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'HealthResponse',
-                      style: Theme.of(context).textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineMedium
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 24),
-                child,
-              ],
+                  ),
+                  const SizedBox(height: 30),
+                  child,
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -124,7 +165,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .read(authControllerProvider.notifier)
           .login(_email.text.trim(), _password.text);
     } on AppException catch (e) {
-      if (mounted) setState(() => _error = describeError(e));
+      if (mounted)
+        setState(
+          () => _error = e.kind == ErrorKind.unauthorized
+              ? context.t(
+                  'អ៊ីមែល ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវ',
+                  'Wrong email or password',
+                )
+              : describeError(e),
+        );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -132,9 +181,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final p = Palette.of(context);
     final expired = ref.watch(authControllerProvider).sessionExpired;
-    return _AuthScaffold(
-      title: 'Welcome back',
+    return _AuthFrame(
+      title: context.t('សូមស្វាគមន៍\nត្រឡប់មកវិញ', 'Welcome\nback'),
+      subtitle: context.t(
+        'ចូលគណនីដើម្បីមើលការណាត់ជួប និងកំណត់ត្រាសុខភាពរបស់អ្នក។',
+        'Sign in to see your appointments and health records.',
+      ),
       child: Form(
         key: _form,
         child: AutofillGroup(
@@ -142,62 +196,82 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (expired)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 16),
-                  child: Text('Your session expired. Please sign in again.'),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Gap.lg),
+                  child: Notice(
+                    context.t(
+                      'សម័យកាលរបស់អ្នកបានផុតកំណត់ សូមចូលម្តងទៀត។',
+                      'Your session expired. Please sign in again.',
+                    ),
+                    tone: Tone.amber,
+                  ),
                 ),
               TextFormField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
                 autofillHints: const [AutofillHints.email],
-                decoration: const InputDecoration(labelText: 'Email'),
-                validator: Validators.email,
+                decoration: InputDecoration(
+                  labelText: context.t('អ៊ីមែល', 'Email'),
+                ),
+                validator: (v) => Validators.email(v) == null
+                    ? null
+                    : context.t(
+                        'សូមបញ្ចូលអ៊ីមែលឱ្យត្រឹមត្រូវ',
+                        'Enter a valid email address',
+                      ),
                 textInputAction: TextInputAction.next,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: Gap.md),
               TextFormField(
                 controller: _password,
                 obscureText: _obscure,
                 autofillHints: const [AutofillHints.password],
                 decoration: InputDecoration(
-                  labelText: 'Password',
+                  labelText: context.t('ពាក្យសម្ងាត់', 'Password'),
                   suffixIcon: IconButton(
-                    tooltip: _obscure ? 'Show password' : 'Hide password',
+                    tooltip: _obscure
+                        ? context.t('បង្ហាញ', 'Show')
+                        : context.t('លាក់', 'Hide'),
                     icon: Icon(
-                      _obscure ? Icons.visibility : Icons.visibility_off,
+                      _obscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
                     ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                 ),
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Enter your password' : null,
+                validator: (v) => (v == null || v.isEmpty)
+                    ? context.t('សូមបញ្ចូលពាក្យសម្ងាត់', 'Enter your password')
+                    : null,
                 onFieldSubmitted: (_) => _submit(),
               ),
               if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
+                const SizedBox(height: Gap.md),
+                Notice(_error!, tone: Tone.red),
               ],
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _busy ? null : _submit,
-                child: _busy
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Sign in'),
+              const SizedBox(height: Gap.xl),
+              PrimaryButton(
+                label: context.t('ចូលគណនី', 'Sign in'),
+                busy: _busy,
+                onPressed: _submit,
               ),
-              TextButton(
-                onPressed: () => context.push('/reset'),
-                child: const Text('Forgot password?'),
+              const SizedBox(height: Gap.sm),
+              Center(
+                child: TextButton(
+                  onPressed: () => context.push('/reset'),
+                  child: Text(
+                    context.t('ភ្លេចពាក្យសម្ងាត់?', 'Forgot password?'),
+                    style: TextStyle(
+                      color: p.inkSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
-              OutlinedButton(
+              const SizedBox(height: Gap.sm),
+              GhostButton(
+                label: context.t('បង្កើតគណនីថ្មី', 'Create an account'),
                 onPressed: () => context.push('/register'),
-                child: const Text('Create an account'),
               ),
             ],
           ),
@@ -236,7 +310,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     if (!_accepted) {
-      setState(() => _error = 'Please accept the privacy notice to continue.');
+      setState(
+        () => _error = context.t(
+          'សូមយល់ព្រមនឹងការជូនដំណឹងអំពីឯកជនភាពដើម្បីបន្ត។',
+          'Please accept the privacy notice to continue.',
+        ),
+      );
       return;
     }
     setState(() {
@@ -271,79 +350,132 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => _AuthScaffold(
-    title: 'Create your account',
-    child: Form(
-      key: _form,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextFormField(
-            controller: _name,
-            decoration: const InputDecoration(labelText: 'Full name'),
-            validator: Validators.name,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(labelText: 'Email'),
-            validator: Validators.email,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _phone,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'Phone (optional)'),
-            validator: Validators.phone,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _password,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Password',
-              helperText: 'At least 10 characters',
+  Widget build(BuildContext context) {
+    final p = Palette.of(context);
+    return _AuthFrame(
+      back: true,
+      title: context.t('បង្កើតគណនី', 'Create your\naccount'),
+      subtitle: context.t(
+        'ចំណាយពេលតែមួយនាទី។ អ្នកអាចបំពេញព័ត៌មានសុខភាពនៅពេលក្រោយ។',
+        'It takes a minute. You can add health details later.',
+      ),
+      child: Form(
+        key: _form,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              controller: _name,
+              decoration: InputDecoration(
+                labelText: context.t('ឈ្មោះពេញ', 'Full name'),
+              ),
+              validator: (v) => Validators.name(v) == null
+                  ? null
+                  : context.t('សូមបញ្ចូលឈ្មោះរបស់អ្នក', 'Enter your full name'),
+              textInputAction: TextInputAction.next,
             ),
-            validator: Validators.password,
-          ),
-          const SizedBox(height: 12),
-          CheckboxListTile(
-            value: _accepted,
-            onChanged: (v) => setState(() => _accepted = v ?? false),
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-            title: const Text(
-              'I understand this app stores my profile and health information '
-              'to provide its features, and that it is not a medical device.',
+            const SizedBox(height: Gap.md),
+            TextFormField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: context.t('អ៊ីមែល', 'Email'),
+              ),
+              validator: (v) => Validators.email(v) == null
+                  ? null
+                  : context.t(
+                      'សូមបញ្ចូលអ៊ីមែលឱ្យត្រឹមត្រូវ',
+                      'Enter a valid email address',
+                    ),
+              textInputAction: TextInputAction.next,
             ),
-          ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+            const SizedBox(height: Gap.md),
+            TextFormField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                labelText: context.t(
+                  'ទូរស័ព្ទ (មិនចាំបាច់)',
+                  'Phone (optional)',
+                ),
+              ),
+              validator: (v) => Validators.phone(v) == null
+                  ? null
+                  : context.t(
+                      'លេខទូរស័ព្ទមិនត្រឹមត្រូវ',
+                      'Enter a valid phone number',
+                    ),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: Gap.md),
+            TextFormField(
+              controller: _password,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: context.t('ពាក្យសម្ងាត់', 'Password'),
+                helperText: context.t(
+                  'យ៉ាងតិច ១០ តួអក្សរ',
+                  'At least 10 characters',
+                ),
+              ),
+              validator: (v) => Validators.password(v) == null
+                  ? null
+                  : context.t(
+                      'ត្រូវការយ៉ាងតិច ១០ តួអក្សរ',
+                      'Use at least 10 characters',
+                    ),
+            ),
+            const SizedBox(height: Gap.lg),
+            Tap(
+              onTap: () => setState(() => _accepted = !_accepted),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 24,
+                    height: 24,
+                    margin: const EdgeInsets.only(top: 2),
+                    decoration: BoxDecoration(
+                      color: _accepted ? p.ink : Colors.transparent,
+                      borderRadius: BorderRadius.circular(7),
+                      border: Border.all(
+                        color: _accepted ? p.ink : p.muted,
+                        width: 1.6,
+                      ),
+                    ),
+                    child: _accepted
+                        ? Icon(Icons.check_rounded, size: 17, color: p.paper)
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      context.t(
+                        'ខ្ញុំយល់ថាកម្មវិធីនេះរក្សាទុកព័ត៌មានសុខភាពរបស់ខ្ញុំដើម្បីផ្តល់សេវា ហើយវាមិនមែនជាឧបករណ៍វេជ្ជសាស្ត្រទេ។',
+                        'I understand this app stores my health information to provide its features, and that it is not a medical device.',
+                      ),
+                      style: TextStyle(color: p.inkSoft, height: 1.5),
+                    ),
+                  ),
+                ],
               ),
             ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _busy ? null : _submit,
-            child: _busy
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Create account'),
-          ),
-        ],
+            if (_error != null) ...[
+              const SizedBox(height: Gap.md),
+              Notice(_error!, tone: Tone.red),
+            ],
+            const SizedBox(height: Gap.xl),
+            PrimaryButton(
+              label: context.t('បង្កើតគណនី', 'Create account'),
+              busy: _busy,
+              onPressed: _submit,
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
@@ -361,6 +493,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   bool _requested = false;
   bool _busy = false;
   String? _message;
+  bool _isError = false;
 
   @override
   void dispose() {
@@ -372,7 +505,13 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   Future<void> _request() async {
     if (Validators.email(_email.text) != null) {
-      setState(() => _message = 'Enter a valid email address.');
+      setState(() {
+        _message = context.t(
+          'សូមបញ្ចូលអ៊ីមែលឱ្យត្រឹមត្រូវ។',
+          'Enter a valid email address.',
+        );
+        _isError = true;
+      });
       return;
     }
     setState(() => _busy = true);
@@ -386,10 +525,17 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           );
       setState(() {
         _requested = true;
-        _message = 'If an account exists for that address, reset instructions will be sent.';
+        _isError = false;
+        _message = context.t(
+          'ប្រសិនបើមានគណនីសម្រាប់អ៊ីមែលនេះ យើងនឹងផ្ញើកូដទៅអ្នក។ សូមពិនិត្យប្រអប់សំបុត្រ (និង Spam)។',
+          'If an account exists for that address, we will email you a code. Check your inbox (and Spam).',
+        );
       });
     } on AppException catch (e) {
-      setState(() => _message = describeError(e));
+      setState(() {
+        _message = describeError(e);
+        _isError = true;
+      });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -398,10 +544,13 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   Future<void> _confirm() async {
     if (Validators.password(_password.text) != null ||
         _token.text.trim().isEmpty) {
-      setState(
-        () => _message =
-            'Enter the reset code and a new password (10+ characters).',
-      );
+      setState(() {
+        _message = context.t(
+          'សូមបញ្ចូលកូដ និងពាក្យសម្ងាត់ថ្មី (យ៉ាងតិច ១០ តួ)។',
+          'Enter the code and a new password (10+ characters).',
+        );
+        _isError = true;
+      });
       return;
     }
     setState(() => _busy = true);
@@ -415,56 +564,76 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password updated. Please sign in.')),
+          SnackBar(
+            content: Text(
+              context.t(
+                'បានប្តូរពាក្យសម្ងាត់។ សូមចូលគណនី។',
+                'Password updated. Please sign in.',
+              ),
+            ),
+          ),
         );
         context.go('/login');
       }
     } on AppException catch (e) {
-      setState(() => _message = describeError(e));
+      setState(() {
+        _message = describeError(e);
+        _isError = true;
+      });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => _AuthScaffold(
-    title: 'Reset password',
+  Widget build(BuildContext context) => _AuthFrame(
+    back: true,
+    title: context.t('កំណត់ពាក្យសម្ងាត់ឡើងវិញ', 'Reset your\npassword'),
+    subtitle: context.t(
+      'យើងនឹងផ្ញើកូដមួយទៅអ៊ីមែលរបស់អ្នក។',
+      'We will email you a code to set a new one.',
+    ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextField(
           controller: _email,
           keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(labelText: 'Email'),
+          decoration: InputDecoration(labelText: context.t('អ៊ីមែល', 'Email')),
         ),
-        const SizedBox(height: 12),
-        FilledButton(
-          onPressed: _busy ? null : _request,
-          child: const Text('Send reset instructions'),
+        const SizedBox(height: Gap.md),
+        PrimaryButton(
+          label: context.t('ផ្ញើកូដ', 'Send code'),
+          busy: _busy && !_requested,
+          onPressed: _request,
         ),
         if (_requested) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: Gap.xl),
           TextField(
             controller: _token,
-            decoration: const InputDecoration(labelText: 'Reset code'),
+            decoration: InputDecoration(
+              labelText: context.t('កូដក្នុងអ៊ីមែល', 'Code from your email'),
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Gap.md),
           TextField(
             controller: _password,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'New password'),
+            decoration: InputDecoration(
+              labelText: context.t('ពាក្យសម្ងាត់ថ្មី', 'New password'),
+            ),
           ),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: _busy ? null : _confirm,
-            child: const Text('Set new password'),
+          const SizedBox(height: Gap.md),
+          PrimaryButton(
+            label: context.t('កំណត់ពាក្យសម្ងាត់ថ្មី', 'Set new password'),
+            busy: _busy,
+            onPressed: _confirm,
           ),
         ],
-        if (_message != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Text(_message!),
-          ),
+        if (_message != null) ...[
+          const SizedBox(height: Gap.lg),
+          Notice(_message!, tone: _isError ? Tone.red : Tone.teal),
+        ],
       ],
     ),
   );

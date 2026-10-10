@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/design/kit.dart';
+import '../../core/design/kit_extra.dart';
+import '../../core/design/palette.dart';
 import '../../core/errors/app_exception.dart';
+import '../../core/i18n/language.dart';
 import '../../core/network/providers.dart';
-import '../../core/theme/app_theme.dart';
-import '../../core/widgets/state_views.dart';
 import '../authentication/auth_controller.dart';
 import '../location/location_service.dart';
 import 'emergency_controller.dart';
-import 'emergency_models.dart';
 import 'hold_to_confirm_button.dart';
 
 final systemSettingsProvider = FutureProvider.autoDispose<Map<String, String>>((
@@ -19,6 +19,41 @@ final systemSettingsProvider = FutureProvider.autoDispose<Map<String, String>>((
   final res = await ref.read(apiClientProvider).get('/system/settings');
   return (res as Map).map((k, v) => MapEntry(k.toString(), v.toString()));
 });
+
+(String, String) statusText(String status) => switch (status) {
+  'CREATED' => ('បានរក្សាទុកសំណើ', 'Request saved'),
+  'SUBMITTED' => (
+    'បានផ្ញើទៅបញ្ជីរង់ចាំ កំពុងរង់ចាំបុគ្គលិកទទួលស្គាល់',
+    'Sent to the response queue. Waiting for staff to acknowledge it.',
+  ),
+  'ACKNOWLEDGED' => (
+    'បុគ្គលិកមន្ទីរពេទ្យបានទទួលស្គាល់សំណើ',
+    'Hospital staff acknowledged your request.',
+  ),
+  'RESPONDER_ASSIGNED' => (
+    'បានចាត់តាំងអ្នកឆ្លើយតប',
+    'A responder was assigned.',
+  ),
+  'RESPONDER_EN_ROUTE' => (
+    'អ្នកឆ្លើយតបកំពុងធ្វើដំណើរ (តាមការកត់ត្រារបស់បុគ្គលិក)',
+    'A responder is on the way (as recorded by staff).',
+  ),
+  'ARRIVED' => (
+    'អ្នកឆ្លើយតបបានមកដល់ (តាមការកត់ត្រារបស់បុគ្គលិក)',
+    'A responder has arrived (as recorded by staff).',
+  ),
+  'RESOLVED' => ('បានបញ្ចប់', 'Resolved.'),
+  'CANCELLED' => ('បានលុបចោល', 'Cancelled.'),
+  'REJECTED' => (
+    'ត្រូវបានបដិសេធ សូមទាក់ទងសេវាសង្គ្រោះបន្ទាន់ដោយផ្ទាល់',
+    'Rejected by staff. Please contact emergency services directly.',
+  ),
+  'FAILED' => (
+    'មិនអាចដំណើរការបាន សូមទាក់ទងសេវាសង្គ្រោះបន្ទាន់ដោយផ្ទាល់',
+    'Could not be processed. Please contact emergency services directly.',
+  ),
+  _ => (status, status),
+};
 
 class EmergencyScreen extends ConsumerStatefulWidget {
   const EmergencyScreen({super.key});
@@ -40,28 +75,47 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final p = Palette.of(context);
     final user = ref.watch(authControllerProvider).user;
-    if (user != null && !user.isPatient) return const _ResponderEmergencyList();
+    if (user != null && !user.isPatient) return const _ResponderList();
 
     final state = ref.watch(emergencyControllerProvider);
     final settings = ref.watch(systemSettingsProvider).value;
     final number = settings?['emergency.local_number'];
+    final controller = ref.read(emergencyControllerProvider.notifier);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Emergency')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-        children: [
-          NoticeBanner(
-            settings?['emergency.disclaimer'] ?? 'In-app demonstration response workflow. It is not a real emergency dispatch network.',
-            warning: true,
+      body: SafeArea(
+        child: PageWidth(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              Gap.page,
+              Gap.lg,
+              Gap.page,
+              Gap.xxl,
+            ),
+            children: [
+              Text(
+                context.t('សង្គ្រោះបន្ទាន់', 'Emergency'),
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                context.t(
+                  'នេះជាប្រព័ន្ធបញ្ជីរង់ចាំសាកល្បងក្នុងកម្មវិធី មិនមែនជាបណ្តាញបញ្ជូនរថយន្តសង្គ្រោះពិតប្រាកដទេ។',
+                  'This is an in-app demonstration queue, not a real ambulance dispatch network.',
+                ),
+                style: TextStyle(color: p.muted, height: 1.5),
+              ),
+              const SizedBox(height: Gap.xl),
+              ..._body(context, state, number, controller),
+              const SizedBox(height: Gap.xl),
+              _CallCard(number: number),
+              const SizedBox(height: Gap.xl),
+              const _History(),
+            ],
           ),
-          const SizedBox(height: 24),
-          ..._body(context, state, number),
-          const SizedBox(height: 24),
-          _CallCard(number: number),
-          const SizedBox(height: 16),
-          const _History(),
-        ],
+        ),
       ),
     );
   }
@@ -70,8 +124,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
     BuildContext context,
     EmergencyState state,
     String? number,
+    EmergencyController controller,
   ) {
-    final controller = ref.read(emergencyControllerProvider.notifier);
+    final p = Palette.of(context);
     switch (state.phase) {
       case EmergencyPhase.idle:
         return [
@@ -80,27 +135,49 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
               onConfirmed: () => controller.activate(demo: _demo),
             ),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Press and hold to send your location to the response queue. '
-            'You will see the real status recorded by staff.',
+          const SizedBox(height: Gap.lg),
+          Text(
+            context.t(
+              'សង្កត់ប៊ូតុងរហូតរង្វង់ពេញ។ អ្នកនឹងឃើញស្ថានភាពពិតដែលបុគ្គលិកបានកត់ត្រា។',
+              'Hold until the ring completes. You will see the real status recorded by staff.',
+            ),
             textAlign: TextAlign.center,
+            style: TextStyle(color: p.inkSoft, height: 1.5),
           ),
-          const SizedBox(height: 12),
-          SwitchListTile(
-            value: _demo,
-            onChanged: (v) => setState(() => _demo = v),
-            title: const Text('Demonstration event'),
-            subtitle: const Text(
-              'Marks the request as a practice event for staff.',
+          const SizedBox(height: Gap.lg),
+          Surface(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Gap.lg,
+              vertical: 6,
+            ),
+            child: SwitchRow(
+              value: _demo,
+              onChanged: (v) => setState(() => _demo = v),
+              title: Text(
+                context.t('សំណើសាកល្បង', 'Practice request'),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                context.t(
+                  'សម្គាល់ថាជាសំណើសាកល្បងសម្រាប់បុគ្គលិក និងមិនផ្ញើសារទៅអ្នកទាក់ទង។',
+                  'Marks it as practice for staff and sends no SMS to contacts.',
+                ),
+              ),
             ),
           ),
-          const _LocationStatus(),
+          const SizedBox(height: Gap.md),
+          const _LocationCard(),
         ];
       case EmergencyPhase.locating:
-        return [const LoadingView(label: 'Getting your location…')];
+        return [
+          _Progress(
+            context.t('កំពុងរកទីតាំងរបស់អ្នក…', 'Finding your location…'),
+          ),
+        ];
       case EmergencyPhase.submitting:
-        return [const LoadingView(label: 'Sending request…')];
+        return [
+          _Progress(context.t('កំពុងផ្ញើសំណើ…', 'Sending your request…')),
+        ];
       case EmergencyPhase.failed:
         return [_FailedCard(state: state, number: number)];
       case EmergencyPhase.active:
@@ -109,14 +186,35 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
   }
 }
 
-class _LocationStatus extends ConsumerStatefulWidget {
-  const _LocationStatus();
+class _Progress extends StatelessWidget {
+  const _Progress(this.label);
+  final String label;
 
   @override
-  ConsumerState<_LocationStatus> createState() => _LocationStatusState();
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 40),
+    child: Column(
+      children: [
+        const SizedBox(
+          width: 44,
+          height: 44,
+          child: CircularProgressIndicator(strokeWidth: 4),
+        ),
+        const SizedBox(height: Gap.lg),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+      ],
+    ),
+  );
 }
 
-class _LocationStatusState extends ConsumerState<_LocationStatus> {
+class _LocationCard extends ConsumerStatefulWidget {
+  const _LocationCard();
+
+  @override
+  ConsumerState<_LocationCard> createState() => _LocationCardState();
+}
+
+class _LocationCardState extends ConsumerState<_LocationCard> {
   LocationResult? _result;
   bool _busy = false;
 
@@ -131,58 +229,87 @@ class _LocationStatusState extends ConsumerState<_LocationStatus> {
     }
   }
 
+  String _message(BuildContext context, LocationResult r) => switch (r.status) {
+    LocationStatus.ok => context.t(
+      'រកឃើញទីតាំង (ភាពត្រឹមត្រូវប្រហែល ${r.accuracyMeters?.round() ?? '?'} ម៉ែត្រ)។',
+      'Location found (accuracy about ${r.accuracyMeters?.round() ?? '?'} m).',
+    ),
+    LocationStatus.denied => context.t(
+      'មិនទាន់អនុញ្ញាតទីតាំង។ អ្នកឆ្លើយតបនឹងមិនទទួលបានទីតាំងរបស់អ្នកទេ។',
+      'Location permission not granted. Responders will not receive your position.',
+    ),
+    LocationStatus.deniedForever => context.t(
+      'ទីតាំងត្រូវបានបិទ។ សូមបើកក្នុងការកំណត់ប្រព័ន្ធ។',
+      'Location is blocked. Enable it in system settings.',
+    ),
+    LocationStatus.serviceDisabled => context.t(
+      'សេវាទីតាំងត្រូវបានបិទលើឧបករណ៍នេះ។',
+      'Location services are off on this device.',
+    ),
+    LocationStatus.timeout => context.t(
+      'មិនអាចរកទីតាំងទាន់ពេល។',
+      'Could not get a GPS fix in time.',
+    ),
+    LocationStatus.error => context.t(
+      'ទីតាំងមិនអាចប្រើបានឥឡូវនេះ។',
+      'Location is unavailable right now.',
+    ),
+  };
+
   @override
   Widget build(BuildContext context) {
+    final p = Palette.of(context);
     final r = _result;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  r?.hasFix == true
-                      ? Icons.my_location
-                      : Icons.location_searching,
-                  color: r?.hasFix == true ? AppColors.success : null,
+    return Surface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                r?.hasFix == true
+                    ? Icons.my_location_rounded
+                    : Icons.location_searching_rounded,
+                color: r?.hasFix == true ? p.green : p.muted,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                context.t('ទីតាំង', 'Location'),
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            r == null
+                ? context.t(
+                    'ទីតាំងត្រូវបានស្នើសុំតែពេលអ្នកស្នើជំនួយ ឬពិនិត្យនៅទីនេះប៉ុណ្ណោះ។',
+                    'Your location is requested only when you ask for help or check it here.',
+                  )
+                : _message(context, r),
+            style: TextStyle(color: p.inkSoft, height: 1.5),
+          ),
+          const SizedBox(height: Gap.md),
+          Wrap(
+            spacing: 8,
+            children: [
+              GhostButton(
+                compact: true,
+                label: _busy
+                    ? context.t('កំពុងពិនិត្យ…', 'Checking…')
+                    : context.t('ពិនិត្យទីតាំង', 'Check location'),
+                onPressed: _busy ? null : _check,
+              ),
+              if (r?.status == LocationStatus.deniedForever)
+                GhostButton(
+                  compact: true,
+                  label: context.t('បើកការកំណត់', 'Open settings'),
+                  onPressed: () =>
+                      ref.read(locationProviderProvider).openSettings(),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  'Location',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              r?.message ?? 'Your location is only requested when you ask for help or check it here, and is only shared with the response team.',
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              children: [
-                OutlinedButton(
-                  onPressed: _busy ? null : _check,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, 44),
-                  ),
-                  child: Text(_busy ? 'Checking…' : 'Check location'),
-                ),
-                if (r?.status == LocationStatus.deniedForever)
-                  OutlinedButton(
-                    onPressed: () =>
-                        ref.read(locationProviderProvider).openSettings(),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 44),
-                    ),
-                    child: const Text('Open settings'),
-                  ),
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -195,54 +322,60 @@ class _FailedCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = Palette.of(context);
     final controller = ref.read(emergencyControllerProvider.notifier);
-    final err = state.error;
-    return Card(
-      color: AppColors.emergency.withValues(alpha: 0.06),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.cancel_rounded, color: AppColors.emergency),
-                const SizedBox(width: 8),
-                Text(
-                  'Request NOT confirmed',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.emergency,
-                    fontWeight: FontWeight.w700,
+    return Surface(
+      color: p.redSoft,
+      borderColor: p.red.withValues(alpha: 0.35),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.cancel_rounded, color: p.red),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  context.t('មិនទាន់បានបញ្ជាក់សំណើ', 'Request NOT confirmed'),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: p.red,
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            state.error == null ? '' : describeError(state.error!),
+            style: TextStyle(color: p.inkSoft, height: 1.5),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            context.t(
+              'មិនទាន់មាននរណាត្រូវបានជូនដំណឹងទេ។ ប្រសិនបើអ្នកមានគ្រោះថ្នាក់ សូមហៅលេខសង្គ្រោះបន្ទាន់ក្នុងតំបន់ភ្លាមៗ រួចសាកល្បងម្តងទៀត។',
+              'No one has been notified. If you are in danger, call your local emergency number now, then try again.',
             ),
-            const SizedBox(height: 8),
-            Text(
-              err == null
-                  ? 'The request could not be confirmed.'
-                  : describeError(err),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'No one has been notified. If you are in danger, call your local emergency '
-              'number now, then try sending the request again.',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 16),
-            _CallButton(number: number),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed: () => controller.activate(),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry sending request'),
-            ),
-            TextButton(
+            style: const TextStyle(fontWeight: FontWeight.w700, height: 1.5),
+          ),
+          const SizedBox(height: Gap.lg),
+          _CallButton(number: number),
+          const SizedBox(height: Gap.sm),
+          PrimaryButton(
+            label: context.t('ផ្ញើម្តងទៀត', 'Try sending again'),
+            icon: Icons.refresh_rounded,
+            danger: true,
+            onPressed: () => controller.activate(),
+          ),
+          const SizedBox(height: 4),
+          Center(
+            child: TextButton(
               onPressed: controller.dismiss,
-              child: const Text('Dismiss'),
+              child: Text(context.t('បិទ', 'Dismiss')),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -254,140 +387,237 @@ class _ActiveCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = Palette.of(context);
     final event = state.event!;
     final controller = ref.read(emergencyControllerProvider.notifier);
-    final fmt = DateFormat('d MMM, HH:mm:ss');
-    final color = switch (event.status) {
-      'RESOLVED' => AppColors.success,
-      'CANCELLED' || 'REJECTED' || 'FAILED' => AppColors.warning,
-      _ => AppColors.emergency,
+    final (km, en) = statusText(event.status);
+    final terminal = event.isTerminal;
+    final tone = event.status == 'RESOLVED'
+        ? p.green
+        : (terminal ? p.amber : p.red);
+    final steps = [
+      'SUBMITTED',
+      'ACKNOWLEDGED',
+      'RESPONDER_ASSIGNED',
+      'RESPONDER_EN_ROUTE',
+      'ARRIVED',
+      'RESOLVED',
+    ];
+    final reached = event.history.map((h) => h.toStatus).toSet();
+    final labels = {
+      'SUBMITTED': context.t('បានផ្ញើ', 'Sent'),
+      'ACKNOWLEDGED': context.t('បានទទួលស្គាល់', 'Acknowledged'),
+      'RESPONDER_ASSIGNED': context.t('បានចាត់តាំង', 'Assigned'),
+      'RESPONDER_EN_ROUTE': context.t('កំពុងធ្វើដំណើរ', 'On the way'),
+      'ARRIVED': context.t('បានមកដល់', 'Arrived'),
+      'RESOLVED': context.t('បានបញ្ចប់', 'Resolved'),
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Chip(
-                      label: Text(event.status.replaceAll('_', ' ')),
-                      backgroundColor: color.withValues(alpha: 0.12),
-                      labelStyle: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      side: BorderSide.none,
+        Surface(
+          color: p.surface,
+          borderColor: tone.withValues(alpha: 0.5),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: tone,
+                      shape: BoxShape.circle,
                     ),
-                    if (event.demo) ...[
-                      const SizedBox(width: 8),
-                      const Chip(label: Text('DEMO')),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  describeEmergencyStatus(event.status),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                if (event.responders.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text('Responder: ${event.responders.join(', ')}'),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    event.status.replaceAll('_', ' '),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                      color: tone,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (event.demo)
+                    Pill(context.t('សាកល្បង', 'Practice'), tone: Tone.amber),
                 ],
-                const SizedBox(height: 8),
-                Text(
-                  state.stale
-                      ? 'Could not refresh. This may be out of date (last confirmed ${state.lastSyncAt == null ? 'unknown' : fmt.format(state.lastSyncAt!)}).'
-                      : 'Last confirmed by server ${state.lastSyncAt == null ? '' : fmt.format(state.lastSyncAt!)}',
-                  style: TextStyle(
-                    color: state.stale ? AppColors.warning : null,
-                    fontWeight: state.stale ? FontWeight.w600 : null,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                context.t(km, en),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  height: 1.5,
+                ),
+              ),
+              if (event.responders.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    '${context.t('អ្នកឆ្លើយតប', 'Responder')}: ${event.responders.join(', ')}',
+                    style: TextStyle(color: p.inkSoft),
                   ),
                 ),
-                if (event.latitude == null)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text('No location was shared with this request.'),
+              const SizedBox(height: 10),
+              Text(
+                state.stale
+                    ? context.t(
+                        'មិនអាចធ្វើបច្ចុប្បន្នភាពបាន ស្ថានភាពអាចហួសសម័យ។',
+                        'Could not refresh. This status may be out of date.',
+                      )
+                    : '${context.t('បានបញ្ជាក់ដោយម៉ាស៊ីនមេ', 'Confirmed by the server')} ${state.lastSyncAt == null ? '' : context.fmt('HH:mm:ss', state.lastSyncAt!)}',
+                style: TextStyle(
+                  color: state.stale ? p.amber : p.muted,
+                  fontWeight: state.stale ? FontWeight.w700 : null,
+                  fontSize: 13,
+                ),
+              ),
+              if (event.latitude == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    context.t(
+                      'មិនបានចែករំលែកទីតាំងជាមួយសំណើនេះទេ។',
+                      'No location was shared with this request.',
+                    ),
+                    style: TextStyle(color: p.muted, fontSize: 13),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
-        _Timeline(entries: event.history),
-        const SizedBox(height: 12),
+        const SizedBox(height: Gap.md),
+        Surface(
+          child: Column(
+            children: [
+              for (var i = 0; i < steps.length; i++)
+                _Step(
+                  label: labels[steps[i]]!,
+                  done: reached.contains(steps[i]),
+                  current: event.status == steps[i],
+                  last: i == steps.length - 1,
+                  time: event.history
+                      .where((h) => h.toStatus == steps[i])
+                      .map((h) => context.fmt('HH:mm', h.at))
+                      .firstOrNull,
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: Gap.md),
         if (event.canCancel)
-          OutlinedButton.icon(
+          GhostButton(
+            icon: Icons.close_rounded,
+            label: context.t(
+              'ខ្ញុំសុវត្ថិភាព លុបចោលសំណើ',
+              'I am safe, cancel the request',
+            ),
             onPressed: () async {
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: const Text('Cancel this request?'),
-                  content: const Text(
-                    'Use this only if you no longer need help (false alarm).',
+                  title: Text(ctx.t('លុបចោលសំណើ?', 'Cancel this request?')),
+                  content: Text(
+                    ctx.t(
+                      'ប្រើតែពេលអ្នកលែងត្រូវការជំនួយ (សំណើខុស)។',
+                      'Use this only if you no longer need help (false alarm).',
+                    ),
                   ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Keep request'),
+                      child: Text(ctx.t('រក្សាសំណើ', 'Keep request')),
                     ),
-                    FilledButton(
+                    TextButton(
                       onPressed: () => Navigator.pop(ctx, true),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(120, 48),
-                      ),
-                      child: const Text('Cancel request'),
+                      child: Text(ctx.t('លុបចោល', 'Cancel request')),
                     ),
                   ],
                 ),
               );
               if (ok == true) await controller.cancel(note: 'False alarm');
             },
-            icon: const Icon(Icons.close),
-            label: const Text('I am safe — cancel request'),
           ),
-        if (event.isTerminal)
-          TextButton(onPressed: controller.dismiss, child: const Text('Done')),
+        if (terminal)
+          TextButton(
+            onPressed: controller.dismiss,
+            child: Text(context.t('រួចរាល់', 'Done')),
+          ),
       ],
     );
   }
 }
 
-class _Timeline extends StatelessWidget {
-  const _Timeline({required this.entries});
-  final List<EmergencyHistoryEntry> entries;
+class _Step extends StatelessWidget {
+  const _Step({
+    required this.label,
+    required this.done,
+    required this.current,
+    required this.last,
+    this.time,
+  });
+  final String label;
+  final bool done;
+  final bool current;
+  final bool last;
+  final String? time;
 
   @override
   Widget build(BuildContext context) {
-    final fmt = DateFormat('HH:mm:ss');
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Timeline', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            for (final e in entries.reversed)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(width: 64, child: Text(fmt.format(e.at))),
-                    Expanded(
-                      child: Text(
-                        '${e.toStatus.replaceAll('_', ' ')}${e.note == null ? '' : ' — ${e.note}'}',
+    final p = Palette.of(context);
+    final color = done ? (current ? p.red : p.teal) : p.line;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 26,
+            child: Column(
+              children: [
+                Container(
+                  width: current ? 16 : 12,
+                  height: current ? 16 : 12,
+                  margin: const EdgeInsets.only(top: 6),
+                  decoration: BoxDecoration(
+                    color: done ? color : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: color, width: 2),
+                  ),
+                ),
+                if (!last)
+                  Expanded(
+                    child: Container(width: 2, color: done ? p.teal : p.line),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontWeight: current ? FontWeight.w800 : FontWeight.w600,
+                        color: done ? p.ink : p.muted,
+                        height: 1.4,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  if (time != null)
+                    Text(time!, style: TextStyle(color: p.muted, fontSize: 13)),
+                ],
               ),
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -398,20 +628,17 @@ class _CallCard extends StatelessWidget {
   final String? number;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Call emergency services',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          _CallButton(number: number),
-        ],
-      ),
+  Widget build(BuildContext context) => Surface(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.t('ហៅសេវាសង្គ្រោះបន្ទាន់', 'Call emergency services'),
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        _CallButton(number: number),
+      ],
     ),
   );
 }
@@ -425,38 +652,44 @@ class _CallButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = Palette.of(context);
     if (!_configured) {
-      return const Text(
-        'No emergency number has been configured by the administrator. '
-        'Dial your local emergency number manually.',
+      return Text(
+        context.t(
+          'អ្នកគ្រប់គ្រងមិនទាន់កំណត់លេខសង្គ្រោះបន្ទាន់ទេ។ សូមហៅលេខសង្គ្រោះបន្ទាន់ក្នុងតំបន់ដោយខ្លួនឯង។',
+          'The administrator has not configured an emergency number. Dial your local emergency number manually.',
+        ),
+        style: TextStyle(color: p.inkSoft, height: 1.5),
       );
     }
-    return OutlinedButton.icon(
+    return GhostButton(
+      icon: Icons.call_rounded,
+      label: '${context.t('ហៅ', 'Call')} $number',
       onPressed: () async {
         final ok = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Text('Call $number?'),
-            content: const Text(
-              'Your phone dialler will open. Nothing is dialled automatically.',
+            title: Text('${ctx.t('ហៅ', 'Call')} $number?'),
+            content: Text(
+              ctx.t(
+                'ឧបករណ៍ហៅទូរស័ព្ទនឹងបើក។ គ្មានអ្វីត្រូវបានហៅដោយស្វ័យប្រវត្តិទេ។',
+                'Your dialler will open. Nothing is dialled automatically.',
+              ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
+                child: Text(ctx.t('បោះបង់', 'Cancel')),
               ),
-              FilledButton(
+              TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                style: FilledButton.styleFrom(minimumSize: const Size(100, 48)),
-                child: const Text('Open dialler'),
+                child: Text(ctx.t('បើកឧបករណ៍ហៅ', 'Open dialler')),
               ),
             ],
           ),
         );
         if (ok == true) await launchUrl(Uri(scheme: 'tel', path: number));
       },
-      icon: const Icon(Icons.call),
-      label: Text('Call $number'),
     );
   }
 }
@@ -466,11 +699,11 @@ class _History extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = Palette.of(context);
     final history = ref.watch(emergencyHistoryProvider);
-    final fmt = DateFormat('d MMM yyyy, HH:mm');
     return history.when(
       loading: () => const SizedBox.shrink(),
-      error: (e, _) => ErrorView(
+      error: (e, _) => ErrorState(
         error: e,
         onRetry: () => ref.invalidate(emergencyHistoryProvider),
       ),
@@ -479,17 +712,57 @@ class _History extends ConsumerWidget {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('History', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
+                SectionHeader(
+                  context.t('ប្រវត្តិ', 'History'),
+                  count: events.length,
+                ),
                 for (final e in events)
-                  Card(
-                    child: ListTile(
-                      leading: Icon(
-                        e.isTerminal ? Icons.history : Icons.pending_actions,
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Surface(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Gap.lg,
+                        vertical: 12,
                       ),
-                      title: Text(e.status.replaceAll('_', ' ')),
-                      subtitle: Text(fmt.format(e.createdAt)),
-                      trailing: e.demo ? const Chip(label: Text('DEMO')) : null,
+                      child: Row(
+                        children: [
+                          Icon(
+                            e.isTerminal
+                                ? Icons.history_rounded
+                                : Icons.pending_actions_rounded,
+                            color: p.muted,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  e.status.replaceAll('_', ' '),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  context.fmt(
+                                    'd MMM yyyy · HH:mm',
+                                    e.createdAt,
+                                  ),
+                                  style: TextStyle(
+                                    color: p.muted,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (e.demo)
+                            Pill(
+                              context.t('សាកល្បង', 'Practice'),
+                              tone: Tone.amber,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
               ],
@@ -499,35 +772,59 @@ class _History extends ConsumerWidget {
 }
 
 /// Doctors (and other non-patient roles) see incidents they may act on rather than the patient SOS control.
-class _ResponderEmergencyList extends ConsumerWidget {
-  const _ResponderEmergencyList();
+class _ResponderList extends ConsumerWidget {
+  const _ResponderList();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(emergencyHistoryProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Assigned incidents')),
+      appBar: AppBar(
+        title: Text(context.t('ករណីដែលបានចាត់តាំង', 'Assigned incidents')),
+      ),
       body: history.when(
-        loading: () => const LoadingView(),
-        error: (e, _) => ErrorView(
+        loading: () => const SkeletonList(),
+        error: (e, _) => ErrorState(
           error: e,
           onRetry: () => ref.invalidate(emergencyHistoryProvider),
         ),
         data: (events) => events.isEmpty
-            ? const EmptyView(
-                icon: Icons.verified_user_outlined,
-                title: 'No incidents assigned to you',
-                message:
-                    'Incidents appear here when hospital staff assign you.',
+            ? EmptyState(
+                art: Art.shield,
+                title: context.t(
+                  'មិនមានករណីចាត់តាំងទេ',
+                  'Nothing assigned to you',
+                ),
+                message: context.t(
+                  'ករណីនឹងបង្ហាញនៅទីនេះនៅពេលបុគ្គលិកចាត់តាំងអ្នក។',
+                  'Incidents appear here when hospital staff assign you.',
+                ),
               )
             : ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(Gap.page),
                 children: [
                   for (final e in events)
-                    Card(
-                      child: ListTile(
-                        title: Text(e.status.replaceAll('_', ' ')),
-                        subtitle: Text(describeEmergencyStatus(e.status)),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Surface(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              e.status.replaceAll('_', ' '),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              context.t(
+                                statusText(e.status).$1,
+                                statusText(e.status).$2,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                 ],

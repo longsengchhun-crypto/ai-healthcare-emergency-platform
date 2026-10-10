@@ -14,8 +14,10 @@ import '../../features/notifications/notifications_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/patient_home/home_screen.dart';
 import '../../features/profile/profile_screen.dart';
+import '../../features/profile/settings_screens.dart';
 import '../../features/sensors/safety_check_screen.dart';
-import '../theme/app_theme.dart';
+import '../design/nav_bar.dart';
+import '../design/palette.dart';
 
 final onboardedProvider = NotifierProvider<OnboardedNotifier, bool?>(
   OnboardedNotifier.new,
@@ -38,6 +40,25 @@ class _RouterRefresh extends ChangeNotifier {
     ref.listen(onboardedProvider, (_, _) => notifyListeners());
   }
 }
+
+CustomTransitionPage<void> _fade(
+  GoRouterState s,
+  Widget child,
+) => CustomTransitionPage<void>(
+  key: s.pageKey,
+  child: child,
+  transitionDuration: const Duration(milliseconds: 220),
+  transitionsBuilder: (context, animation, _, c) => FadeTransition(
+    opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+    child: SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0, 0.025),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+      child: c,
+    ),
+  ),
+);
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = _RouterRefresh(ref);
@@ -64,19 +85,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/splash',
-        builder: (_, _) =>
-            const Scaffold(body: Center(child: CircularProgressIndicator())),
-      ),
+      GoRoute(path: '/splash', builder: (_, _) => const _Splash()),
       GoRoute(
         path: '/onboarding',
         builder: (_, _) =>
             OnboardingScreen(onDone: ref.read(onboardedProvider.notifier).done),
       ),
-      GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-      GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
-      GoRoute(path: '/reset', builder: (_, _) => const ResetPasswordScreen()),
+      GoRoute(
+        path: '/login',
+        pageBuilder: (c, s) => _fade(s, const LoginScreen()),
+      ),
+      GoRoute(
+        path: '/register',
+        pageBuilder: (c, s) => _fade(s, const RegisterScreen()),
+      ),
+      GoRoute(
+        path: '/reset',
+        pageBuilder: (c, s) => _fade(s, const ResetPasswordScreen()),
+      ),
       GoRoute(
         path: '/safety-check',
         builder: (_, _) => const SafetyCheckScreen(),
@@ -85,58 +111,132 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) =>
             _Shell(location: state.matchedLocation, child: child),
         routes: [
-          GoRoute(path: '/', builder: (_, _) => const HomeScreen()),
-          GoRoute(path: '/discover', builder: (_, _) => const DiscoverScreen()),
+          GoRoute(
+            path: '/',
+            pageBuilder: (c, s) => NoTransitionPage(child: const HomeScreen()),
+          ),
+          GoRoute(
+            path: '/discover',
+            pageBuilder: (c, s) =>
+                NoTransitionPage(child: const DiscoverScreen()),
+          ),
           GoRoute(
             path: '/appointments',
-            builder: (_, _) => const AppointmentsScreen(),
+            pageBuilder: (c, s) =>
+                NoTransitionPage(child: const AppointmentsScreen()),
           ),
           GoRoute(
             path: '/emergency',
-            builder: (_, _) => const EmergencyScreen(),
+            pageBuilder: (c, s) =>
+                NoTransitionPage(child: const EmergencyScreen()),
           ),
-          GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
+          GoRoute(
+            path: '/profile',
+            pageBuilder: (c, s) =>
+                NoTransitionPage(child: const ProfileScreen()),
+          ),
         ],
       ),
       GoRoute(
         path: '/doctor/:id',
-        builder: (_, s) =>
-            DoctorDetailScreen(doctorId: s.pathParameters['id']!),
+        pageBuilder: (c, s) =>
+            _fade(s, DoctorDetailScreen(doctorId: s.pathParameters['id']!)),
       ),
       GoRoute(
         path: '/hospital/:id',
-        builder: (_, s) =>
-            HospitalDetailScreen(hospitalId: s.pathParameters['id']!),
+        pageBuilder: (c, s) =>
+            _fade(s, HospitalDetailScreen(hospitalId: s.pathParameters['id']!)),
       ),
-      GoRoute(path: '/records', builder: (_, _) => const RecordsScreen()),
+      GoRoute(
+        path: '/records',
+        pageBuilder: (c, s) => _fade(s, const RecordsScreen()),
+      ),
+      GoRoute(
+        path: '/record/:id',
+        pageBuilder: (c, s) =>
+            _fade(s, RecordDetailScreen(recordId: s.pathParameters['id']!)),
+      ),
+      GoRoute(
+        path: '/patient/:id/records',
+        pageBuilder: (c, s) => _fade(
+          s,
+          RecordsScreen(
+            patientId: s.pathParameters['id'],
+            patientName: s.extra as String?,
+          ),
+        ),
+      ),
       GoRoute(
         path: '/medications',
-        builder: (_, _) => const MedicationsScreen(),
+        pageBuilder: (c, s) => _fade(s, const MedicationsScreen()),
       ),
-      GoRoute(path: '/assistant', builder: (_, _) => const AiAssistantScreen()),
+      GoRoute(
+        path: '/assistant',
+        pageBuilder: (c, s) => _fade(s, const AiAssistantScreen()),
+      ),
       GoRoute(
         path: '/notifications',
-        builder: (_, _) => const NotificationsScreen(),
+        pageBuilder: (c, s) => _fade(s, const NotificationsScreen()),
       ),
       GoRoute(
         path: '/profile/edit',
-        builder: (_, _) => const EditProfileScreen(),
+        pageBuilder: (c, s) => _fade(s, const EditProfileScreen()),
       ),
       GoRoute(
         path: '/profile/contacts',
-        builder: (_, _) => const ContactsScreen(),
+        pageBuilder: (c, s) => _fade(s, const ContactsScreen()),
       ),
       GoRoute(
         path: '/profile/sensors',
-        builder: (_, _) => const SensorSettingsScreen(),
+        pageBuilder: (c, s) => _fade(s, const SensorSettingsScreen()),
       ),
       GoRoute(
         path: '/profile/privacy',
-        builder: (_, _) => const PrivacyScreen(),
+        pageBuilder: (c, s) => _fade(s, const PrivacyScreen()),
+      ),
+      GoRoute(
+        path: '/profile/availability',
+        pageBuilder: (c, s) => _fade(s, const AvailabilityScreen()),
       ),
     ],
   );
 });
+
+class _Splash extends StatelessWidget {
+  const _Splash();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Palette.of(context);
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: p.ink,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(Icons.favorite_rounded, color: p.paper, size: 32),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: 90,
+              child: LinearProgressIndicator(
+                minHeight: 3,
+                color: p.teal,
+                backgroundColor: p.line,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _Shell extends StatelessWidget {
   const _Shell({required this.location, required this.child});
@@ -150,6 +250,23 @@ class _Shell extends StatelessWidget {
     '/emergency',
     '/profile',
   ];
+  static const _items = [
+    NavItem(Icons.home_outlined, Icons.home_rounded, 'ទំព័រដើម', 'Home'),
+    NavItem(Icons.search_rounded, Icons.search_rounded, 'ស្វែងរក', 'Discover'),
+    NavItem(Icons.event_outlined, Icons.event_rounded, 'ណាត់ជួប', 'Visits'),
+    NavItem(
+      Icons.emergency_outlined,
+      Icons.emergency_rounded,
+      'បន្ទាន់',
+      'Emergency',
+    ),
+    NavItem(
+      Icons.person_outline_rounded,
+      Icons.person_rounded,
+      'ខ្ញុំ',
+      'Profile',
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -157,36 +274,11 @@ class _Shell extends StatelessWidget {
     if (index < 0) index = 0;
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) => context.go(_tabs[i]),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.search),
-            selectedIcon: Icon(Icons.search),
-            label: 'Discover',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.event_outlined),
-            selectedIcon: Icon(Icons.event),
-            label: 'Appointments',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.emergency_outlined, color: AppColors.emergency),
-            selectedIcon: Icon(Icons.emergency, color: AppColors.emergency),
-            label: 'Emergency',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+      bottomNavigationBar: AppNavBar(
+        items: _items,
+        index: index,
+        emergencyIndex: 3,
+        onSelect: (i) => context.go(_tabs[i]),
       ),
     );
   }
