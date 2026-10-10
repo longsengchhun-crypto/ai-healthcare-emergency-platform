@@ -46,7 +46,7 @@ services:
     volumes:
       - documents:/data/private-documents
       # To enable push, mount your Firebase key and set FCM_SERVICE_ACCOUNT_FILE=/run/secrets/firebase.json:
-      # - ../secrets/firebase-service-account.json:/run/secrets/firebase.json:ro
+      - ../secrets/firebase-service-account.json:/run/secrets/firebase.json:ro
     ports:
       - "127.0.0.1:8080:8080"
 

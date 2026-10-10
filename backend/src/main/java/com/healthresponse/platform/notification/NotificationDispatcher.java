@@ -75,7 +75,7 @@ public class NotificationDispatcher {
             update(p.attemptId(), "SENT", p.attempts() + 1, null, null, now);
         } catch (Exception e) {
             int attempts = p.attempts() + 1;
-            log.warn("Push delivery attempt {} failed for {}", attempts, p.attemptId());
+            log.warn("Push delivery attempt {} failed for {}: {}", attempts, p.attemptId(), e.getClass().getSimpleName() + " " + e.getMessage());
             if (attempts >= MAX_ATTEMPTS) {
                 update(p.attemptId(), "FAILED", attempts, null, "Delivery failed after retries", now);
             } else {

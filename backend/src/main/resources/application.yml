@@ -32,6 +32,10 @@ server:
     include-message: never
 
 management:
+  health:
+    mail:
+      # An unreachable mail server must not make the whole API report DOWN.
+      enabled: false
   endpoints:
     web:
       exposure:
