@@ -56,7 +56,7 @@ class FlowIntegrationTest {
     JsonNode postJson(String url, String token, Object body, int expected) throws Exception { return send(post(url), token, body, expected); }
 
     String firstDoctorId(String token) throws Exception {
-        for (JsonNode d : getJson("/api/v1/doctors?q=Cardiologist", token, 200).get("items")) return d.get("id").asText();
+        for (JsonNode d : getJson("/api/v1/doctors?q=Cardiology", token, 200).get("items")) return d.get("id").asText();
         throw new AssertionError("no seeded doctor");
     }
 
@@ -100,6 +100,20 @@ class FlowIntegrationTest {
         // cancel frees the slot for another patient
         postJson("/api/v1/appointments/" + id + "/cancel", patient, null, 200);
         postJson("/api/v1/appointments", other, Map.of("doctorId", doctorId, "startsAt", slot), 201);
+    }
+
+    @Test
+    void appointmentListsAreScopedPerRoleAndIncludeDisplayFields() throws Exception {
+        String patient = login(DemoDataSeeder.PATIENT, PW);
+        String doctor = login(DemoDataSeeder.DOCTOR, PW);
+        String stranger = registerPatient();
+        JsonNode mine = getJson("/api/v1/appointments", patient, 200);
+        assertThat(mine.get("total").asInt()).isGreaterThanOrEqualTo(3);
+        JsonNode first = mine.get("items").get(0);
+        assertThat(first.has("doctorPhotoUrl")).isTrue();
+        assertThat(first.get("doctorNameLatin").asText()).startsWith("Dr.");
+        assertThat(getJson("/api/v1/appointments", doctor, 200).get("total").asInt()).isGreaterThanOrEqualTo(3);
+        assertThat(getJson("/api/v1/appointments", stranger, 200).get("total").asInt()).isZero();
     }
 
     @Test

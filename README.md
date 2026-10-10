@@ -62,7 +62,7 @@ docker compose -f infrastructure/docker-compose.yml --env-file .env up --build
 ## Build and test
 
 ```bash
-cd backend && mvn verify                       # 45 tests, H2 + embedded real PostgreSQL
+cd backend && mvn verify                       # 47 tests, H2 + embedded real PostgreSQL
 cd apps/mobile && flutter analyze && flutter test
 cd apps/dashboard && flutter analyze && flutter test
 cd apps/mobile && flutter build apk --debug

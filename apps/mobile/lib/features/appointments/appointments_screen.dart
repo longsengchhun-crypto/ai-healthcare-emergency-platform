@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/network/providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/media.dart';
 import '../../core/widgets/state_views.dart';
 import '../authentication/auth_controller.dart';
 
@@ -21,6 +22,15 @@ Color _statusColor(String s) => switch (s) {
   'REQUESTED' => AppColors.blue,
   'COMPLETED' => Colors.grey,
   _ => AppColors.warning,
+};
+
+String _statusLabel(String s) => switch (s) {
+  'CONFIRMED' => 'បានបញ្ជាក់ · Confirmed',
+  'REQUESTED' => 'កំពុងរង់ចាំ · Pending',
+  'COMPLETED' => 'បានបញ្ចប់ · Completed',
+  'CANCELLED' => 'បានលុបចោល · Cancelled',
+  'REJECTED' => 'បានបដិសេធ · Declined',
+  _ => s,
 };
 
 class AppointmentsScreen extends ConsumerWidget {
@@ -114,7 +124,11 @@ class AppointmentsScreen extends ConsumerWidget {
     final appts = ref.watch(appointmentsProvider);
     final fmt = DateFormat('EEE d MMM · HH:mm');
     return Scaffold(
-      appBar: AppBar(title: Text(isDoctor ? 'Schedule' : 'Appointments')),
+      appBar: AppBar(
+        title: Text(
+          isDoctor ? 'កាលវិភាគ · Schedule' : 'ការណាត់ជួប · Appointments',
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: () async => ref.refresh(appointmentsProvider.future),
         child: appts.when(
@@ -129,15 +143,15 @@ class AppointmentsScreen extends ConsumerWidget {
                     SizedBox(height: 120),
                     EmptyView(
                       icon: Icons.event_available_outlined,
-                      title: 'No appointments yet',
+                      title: 'មិនទាន់មានការណាត់ជួប · No appointments yet',
                       message: 'Find a doctor in Discover to request one.',
                     ),
                   ],
                 )
               : ListView.separated(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                   itemCount: items.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, i) {
                     final a = items[i];
                     final status = a['status'] as String;
@@ -145,43 +159,80 @@ class AppointmentsScreen extends ConsumerWidget {
                         status == 'REQUESTED' || status == 'CONFIRMED';
                     final start = DateTime.parse(a['startsAt'] as String)
                         .toLocal();
+                    final who = isDoctor
+                        ? a['patientName'] as String
+                        : a['doctorName'] as String;
+                    final color = _statusColor(status);
                     return Card(
                       child: Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                Expanded(
-                                  child: Text(
-                                    isDoctor
-                                        ? a['patientName'] as String
-                                        : a['doctorName'] as String,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium,
-                                  ),
+                                PersonAvatar(
+                                  name: who,
+                                  photoUrl: isDoctor
+                                      ? null
+                                      : a['doctorPhotoUrl'] as String?,
+                                  size: 52,
                                 ),
-                                Chip(
-                                  label: Text(status),
-                                  side: BorderSide.none,
-                                  backgroundColor: _statusColor(status)
-                                      .withValues(alpha: 0.12),
-                                  labelStyle: TextStyle(
-                                    color: _statusColor(status),
-                                    fontWeight: FontWeight.w700,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        who,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      if (!isDoctor &&
+                                          a['doctorSpecialty'] != null)
+                                        Text(
+                                          a['doctorSpecialty'] as String,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .outline,
+                                          ),
+                                        ),
+                                      const SizedBox(height: 2),
+                                      Text(fmt.format(start)),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
-                            Text(fmt.format(start)),
-                            if (a['reason'] != null)
-                              Text(a['reason'] as String),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                TagChip(_statusLabel(status), color: color),
+                                if (a['reason'] != null)
+                                  Text(
+                                    a['reason'] as String,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .outline,
+                                    ),
+                                  ),
+                              ],
+                            ),
                             if (active) ...[
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 10),
                               Wrap(
                                 spacing: 8,
+                                runSpacing: 8,
                                 children: [
                                   if (isDoctor && status == 'REQUESTED') ...[
                                     FilledButton(
@@ -194,7 +245,7 @@ class AppointmentsScreen extends ConsumerWidget {
                                       style: FilledButton.styleFrom(
                                         minimumSize: const Size(110, 44),
                                       ),
-                                      child: const Text('Confirm'),
+                                      child: const Text('បញ្ជាក់ · Confirm'),
                                     ),
                                     OutlinedButton(
                                       onPressed: () => _act(
@@ -206,7 +257,7 @@ class AppointmentsScreen extends ConsumerWidget {
                                       style: OutlinedButton.styleFrom(
                                         minimumSize: const Size(110, 44),
                                       ),
-                                      child: const Text('Decline'),
+                                      child: const Text('បដិសេធ · Decline'),
                                     ),
                                   ],
                                   if (isDoctor && status == 'CONFIRMED')
@@ -220,7 +271,9 @@ class AppointmentsScreen extends ConsumerWidget {
                                       style: FilledButton.styleFrom(
                                         minimumSize: const Size(130, 44),
                                       ),
-                                      child: const Text('Mark completed'),
+                                      child: const Text(
+                                        'បញ្ចប់ · Mark completed',
+                                      ),
                                     ),
                                   if (!isDoctor)
                                     OutlinedButton(
@@ -229,7 +282,9 @@ class AppointmentsScreen extends ConsumerWidget {
                                       style: OutlinedButton.styleFrom(
                                         minimumSize: const Size(110, 44),
                                       ),
-                                      child: const Text('Reschedule'),
+                                      child: const Text(
+                                        'ប្តូរម៉ោង · Reschedule',
+                                      ),
                                     ),
                                   OutlinedButton(
                                     onPressed: () async {
@@ -237,13 +292,15 @@ class AppointmentsScreen extends ConsumerWidget {
                                         context: context,
                                         builder: (ctx) => AlertDialog(
                                           title: const Text(
-                                            'Cancel appointment?',
+                                            'លុបចោលការណាត់ជួប? · Cancel appointment?',
                                           ),
                                           actions: [
                                             TextButton(
                                               onPressed: () =>
                                                   Navigator.pop(ctx, false),
-                                              child: const Text('Keep'),
+                                              child: const Text(
+                                                'រក្សាទុក · Keep',
+                                              ),
                                             ),
                                             FilledButton(
                                               onPressed: () =>
@@ -254,7 +311,9 @@ class AppointmentsScreen extends ConsumerWidget {
                                                   48,
                                                 ),
                                               ),
-                                              child: const Text('Cancel it'),
+                                              child: const Text(
+                                                'លុប · Cancel it',
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -271,7 +330,7 @@ class AppointmentsScreen extends ConsumerWidget {
                                     style: OutlinedButton.styleFrom(
                                       minimumSize: const Size(110, 44),
                                     ),
-                                    child: const Text('Cancel'),
+                                    child: const Text('លុបចោល · Cancel'),
                                   ),
                                 ],
                               ),

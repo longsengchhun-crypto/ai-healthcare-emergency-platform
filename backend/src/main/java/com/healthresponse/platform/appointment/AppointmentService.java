@@ -25,7 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AppointmentService {
     public record AppointmentView(UUID id, UUID patientId, String patientName, UUID doctorId, String doctorName,
-                                  Instant startsAt, Instant endsAt, String status, String reason) {}
+                                  Instant startsAt, Instant endsAt, String status, String reason,
+                                  String doctorPhotoUrl, String doctorNameLatin, String doctorSpecialty) {}
 
     private static final Map<String, Set<String>> TRANSITIONS = Map.of(
             "REQUESTED", Set.of("CONFIRMED", "REJECTED", "CANCELLED"),
@@ -48,7 +49,8 @@ public class AppointmentService {
 
     private static final String SELECT = """
             SELECT a.id, a.patient_id, pu.full_name AS patient_name, a.doctor_id, du.full_name AS doctor_name,
-                   a.starts_at, a.ends_at, a.status, a.reason, pp.user_id AS patient_user, dp.user_id AS doctor_user
+                   a.starts_at, a.ends_at, a.status, a.reason, pp.user_id AS patient_user, dp.user_id AS doctor_user,
+                   dp.photo_url AS doctor_photo, dp.name_latin AS doctor_latin, dp.specialty AS doctor_specialty
             FROM appointments a
             JOIN patient_profiles pp ON pp.id = a.patient_id JOIN users pu ON pu.id = pp.user_id
             JOIN doctor_profiles dp ON dp.id = a.doctor_id JOIN users du ON du.id = dp.user_id""";
@@ -60,7 +62,8 @@ public class AppointmentService {
                 new AppointmentView(rs.getObject("id", UUID.class), rs.getObject("patient_id", UUID.class),
                         rs.getString("patient_name"), rs.getObject("doctor_id", UUID.class), rs.getString("doctor_name"),
                         Sql.instant(rs, "starts_at"), Sql.instant(rs, "ends_at"), rs.getString("status"),
-                        rs.getString("reason")),
+                        rs.getString("reason"), rs.getString("doctor_photo"), rs.getString("doctor_latin"),
+                        rs.getString("doctor_specialty")),
                 rs.getObject("patient_user", UUID.class), rs.getObject("doctor_user", UUID.class)))
                 .optional().orElseThrow(() -> ApiException.notFound("Appointment"));
     }
@@ -89,7 +92,7 @@ public class AppointmentService {
         else { scope = "pp.user_id = :uid"; param = p.userId(); }
         var count = jdbc.sql("""
                 SELECT COUNT(*) FROM appointments a JOIN patient_profiles pp ON pp.id = a.patient_id
-                JOIN doctor_profiles dp ON dp.id = a.doctor_id WHERE """ + scope);
+                JOIN doctor_profiles dp ON dp.id = a.doctor_id WHERE """ + " " + scope);
         var query = jdbc.sql(SELECT + " WHERE " + scope + " ORDER BY a.starts_at DESC LIMIT :lim OFFSET :off");
         if (param != null) { count = count.param("uid", param); query = query.param("uid", param); }
         long total = count.query(Long.class).single();
@@ -97,7 +100,8 @@ public class AppointmentService {
                 .query((rs, n) -> new AppointmentView(rs.getObject("id", UUID.class), rs.getObject("patient_id", UUID.class),
                         rs.getString("patient_name"), rs.getObject("doctor_id", UUID.class), rs.getString("doctor_name"),
                         Sql.instant(rs, "starts_at"), Sql.instant(rs, "ends_at"), rs.getString("status"),
-                        rs.getString("reason"))).list();
+                        rs.getString("reason"), rs.getString("doctor_photo"), rs.getString("doctor_latin"),
+                        rs.getString("doctor_specialty"))).list();
         return new DirectoryService.Page<>(items, page, size, total);
     }
 

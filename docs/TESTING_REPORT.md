@@ -7,7 +7,7 @@ Flutter 3.47.7 / Dart 3.13.5). Nothing here is projected.
 
 | Suite | Command | Result |
 |---|---|---|
-| Backend (H2 + real PostgreSQL) | `cd backend && mvn verify` | **45 passed, 0 failed, 0 skipped** |
+| Backend (H2 + real PostgreSQL) | `cd backend && mvn verify` | **47 passed, 0 failed, 0 skipped** |
 | Mobile static analysis | `flutter analyze` | No issues |
 | Mobile tests | `flutter test` | **14 passed, 1 skipped** (live contract test needs `LIVE_API_URL`) |
 | Mobile ↔ live backend contract test | `LIVE_API_URL=… flutter test test/live_backend_test.dart` | **passed** (run once against the packaged jar on H2) |

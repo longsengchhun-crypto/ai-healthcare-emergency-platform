@@ -92,7 +92,7 @@ class SecurityAndRecordsIntegrationTest {
         call(get("/api/v1/medical-records?patientId=" + alicePatientId), doctor, null, 404);
 
         // patient grants access -> doctor can read, then revoke -> blocked again
-        String doctorId = call(get("/api/v1/doctors?q=Cardiologist"), alice, null, 200).get("items").get(0).get("id").asText();
+        String doctorId = call(get("/api/v1/doctors?q=Cardiology"), alice, null, 200).get("items").get(0).get("id").asText();
         String grantId = call(post("/api/v1/patients/me/access-grants"), alice, Map.of("doctorId", doctorId), 201)
                 .get("id").asText();
         assertThat(call(get("/api/v1/medical-records?patientId=" + alicePatientId), doctor, null, 200).size()).isEqualTo(1);
@@ -112,7 +112,7 @@ class SecurityAndRecordsIntegrationTest {
         String doctor = login(DemoDataSeeder.DOCTOR);
         // doctor needs a relationship: patient grants access
         String patientProfile = call(get("/api/v1/patients/me"), patient, null, 200).get("id").asText();
-        String doctorId = call(get("/api/v1/doctors?q=Cardiologist"), patient, null, 200).get("items").get(0).get("id").asText();
+        String doctorId = call(get("/api/v1/doctors?q=Cardiology"), patient, null, 200).get("items").get(0).get("id").asText();
         call(post("/api/v1/patients/me/access-grants"), patient, Map.of("doctorId", doctorId), 201);
 
         JsonNode note = call(post("/api/v1/medical-records"), doctor, Map.of("patientId", patientProfile,

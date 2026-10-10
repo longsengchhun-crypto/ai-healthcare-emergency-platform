@@ -50,3 +50,6 @@ L = polish.
 | 31 | The Windows path containing `&` breaks `gradlew.bat` (workaround: `subst`) | L |
 | 32 | No automated data-erasure tool: in-app deactivation disables the account; permanent erasure on request is an operator procedure (not scripted) | M |
 | 33 | `docs/privacy.html` and `account-deletion.html` contain an `[operator email address]` placeholder that must be replaced before submission | M |
+| 34 | Doctor and hospital pictures are **illustrated avatars/banners generated for this project** (not photographs): using real people's photos for fictional doctors would be misleading and licence-restricted. All people, names and institutions in the seed data are fictional and labelled "គំរូ / Sample" | L |
+| 35 | Khmer is used for data (names, specialties, bios, key headings, bilingual labels) and a Khmer font is bundled, but the **full UI is not localised/translatable** (no language switch, many strings are English-only). Khmer spellings were written without a native-speaker review | M |
+| 36 | Appointment list endpoint had no test until real data exposed a 500 (text-block spacing); now covered by `appointmentListsAreScopedPerRoleAndIncludeDisplayFields` | — |

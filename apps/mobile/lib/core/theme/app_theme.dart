@@ -31,6 +31,7 @@ class AppTheme {
     final cardColor = isLight ? Colors.white : const Color(0xFF16212F);
     return ThemeData(
       useMaterial3: true,
+      fontFamily: 'NotoSansKhmer',
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
       appBarTheme: AppBarTheme(
@@ -49,8 +50,8 @@ class AppTheme {
         margin: EdgeInsets.zero,
         color: cardColor,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: scheme.outlineVariant),
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
