@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+# Single-container build for free cloud hosts (Render, Koyeb, Fly.io, Cloud Run ...).
+# One image serves:   /            mobile app (Flutter web)
+#                     /dashboard/  operations dashboard (Flutter web)
+#                     /api/v1/**   REST API
+# Build context = repository root.
+
+# ---- 1. Flutter web builds -------------------------------------------------------------------------------------
+FROM ubuntu:24.04 AS web
+ARG FLUTTER_VERSION=3.47.7
+RUN apt-get update && apt-get install -y --no-install-recommends git curl unzip xz-utils ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 --branch ${FLUTTER_VERSION} https://github.com/flutter/flutter.git /flutter
+ENV PATH="/flutter/bin:${PATH}" FLUTTER_SUPPRESS_ANALYTICS=true CI=true
+RUN git config --global --add safe.directory /flutter && flutter config --no-analytics >/dev/null \
+    && flutter precache --web
+WORKDIR /src
+COPY apps/mobile apps/mobile
+COPY apps/dashboard apps/dashboard
+# API_BASE_URL=origin => each app talks to whichever host served it (works on any domain, HTTPS)
+RUN cd apps/mobile && flutter pub get && flutter build web --release --dart-define=API_BASE_URL=origin
+RUN cd apps/dashboard && flutter pub get && flutter build web --release --base-href /dashboard/ --dart-define=API_BASE_URL=origin
+
+# ---- 2. Backend jar with the web apps embedded ---------------------------------------------------------------------
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+WORKDIR /build
+COPY backend/pom.xml .
+RUN mvn -B -q dependency:go-offline
+COPY backend/src ./src
+COPY --from=web /src/apps/mobile/build/web ./src/main/resources/static/
+COPY --from=web /src/apps/dashboard/build/web ./src/main/resources/static/dashboard/
+RUN mvn -B -q -DskipTests package
+
+# ---- 3. Runtime ----------------------------------------------------------------------------------------------------
+FROM eclipse-temurin:21-jre
+RUN useradd --system --uid 10001 appuser && mkdir -p /data/private-documents && chown -R appuser /data
+WORKDIR /app
+COPY --from=build /build/target/platform-backend-1.0.0.jar app.jar
+USER appuser
+ENV STORAGE_ROOT=/data/private-documents \
+    JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=70 -XX:+UseSerialGC -Xss512k"
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]

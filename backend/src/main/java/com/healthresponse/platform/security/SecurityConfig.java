@@ -39,6 +39,9 @@ public class SecurityConfig {
                         "/api/v1/auth/refresh", "/api/v1/auth/password-reset",
                         "/api/v1/auth/password-reset/confirm").permitAll()
                 .requestMatchers("/api/v1/**").authenticated()
+                // Static web apps (mobile web at /, dashboard at /dashboard/). Never reaches /api/** because that is
+                // matched above; unknown paths simply 404.
+                .requestMatchers(HttpMethod.GET, "/**").permitAll()
                 .anyRequest().denyAll())
             .exceptionHandling(e -> e
                 .authenticationEntryPoint((req, res, ex) -> {

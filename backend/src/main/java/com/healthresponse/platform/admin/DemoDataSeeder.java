@@ -161,8 +161,12 @@ public class DemoDataSeeder implements ApplicationRunner {
 
         // ---- staff and admin
         UUID staffUser = users.insertUser(STAFF, hash, "ប៊ុន សុផល", "+855000000020", "HOSPITAL_STAFF");
-        jdbc.sql("INSERT INTO hospital_staff (user_id, hospital_id) VALUES (:u, :h)").param("u", staffUser)
-                .param("h", hospitalIds[0]).update();
+        // Demo staff cover every demo hospital: emergencies are routed to the nearest hospital, and testers may be
+        // anywhere in the world, so a single-hospital assignment would hide their events from the demo operator.
+        for (UUID hid : hospitalIds) {
+            jdbc.sql("INSERT INTO hospital_staff (user_id, hospital_id) VALUES (:u, :h)").param("u", staffUser)
+                    .param("h", hid).update();
+        }
         users.insertUser(ADMIN, hash, "អ៊ឹម សុភាព", null, "SYSTEM_ADMIN");
 
         // ---- patient with a realistic history

@@ -12,6 +12,8 @@ class AppConfig {
   /// Debug builds fall back to the Android-emulator / local host address.
   /// Release builds NEVER fall back: a missing or local URL is a configuration error.
   static String get apiBaseUrl {
+    // `origin` = same host that served this web page (single-container cloud deployment).
+    if (_definedBaseUrl == 'origin' && kIsWeb) return Uri.base.origin;
     if (_definedBaseUrl.isNotEmpty) return _definedBaseUrl;
     if (kReleaseMode) return '';
     return kIsWeb ? 'http://localhost:8080' : 'http://10.0.2.2:8080';

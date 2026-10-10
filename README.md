@@ -74,6 +74,6 @@ Live contract test (mobile client ↔ running backend):
 
 ## Documentation
 
-Brief-vs-reality check: [docs/BRIEF_TRACEABILITY.md](docs/BRIEF_TRACEABILITY.md). Design previews: `docs/design-preview/`. Push / SMS / email setup: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). Start at [docs/SYSTEM_ARCHITECTURE.md](docs/SYSTEM_ARCHITECTURE.md). Release steps:
+Deploy for your team (always on, any network): [docs/CLOUD_DEPLOY.md](docs/CLOUD_DEPLOY.md) and [docs/TEAM_TESTING.md](docs/TEAM_TESTING.md). Brief-vs-reality check: [docs/BRIEF_TRACEABILITY.md](docs/BRIEF_TRACEABILITY.md). Design previews: `docs/design-preview/`. Push / SMS / email setup: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). Start at [docs/SYSTEM_ARCHITECTURE.md](docs/SYSTEM_ARCHITECTURE.md). Release steps:
 [docs/PLAY_STORE_RELEASE.md](docs/PLAY_STORE_RELEASE.md). Verified results:
 [docs/TESTING_REPORT.md](docs/TESTING_REPORT.md).

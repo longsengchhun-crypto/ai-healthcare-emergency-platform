@@ -1,0 +1,13 @@
+.git
+.env
+secrets/
+artifacts/
+**/build/
+**/.dart_tool/
+**/target/
+**/node_modules/
+apps/mobile/android/.gradle
+apps/mobile/firebase.defines.json
+apps/mobile/test/golden/out
+docs/
+store/
