@@ -1,5 +1,7 @@
 # Android Build & Google Play Preparation
 
+> **Submission pack:** step-by-step in [PLAY_SUBMISSION_STEPS.md](PLAY_SUBMISSION_STEPS.md); listing text and data-safety answers in `store/`.
+
 > **Status: not submitted.** A release bundle is built and signed with a *locally generated* upload key
 > (`secrets/upload-keystore.jks`, git-ignored; credentials in `apps/mobile/android/key.properties`). It is built
 > against a placeholder API URL, so rebuild with your real HTTPS URL before uploading. Back the key up — losing it

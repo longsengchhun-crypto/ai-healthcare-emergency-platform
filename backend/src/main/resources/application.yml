@@ -14,6 +14,14 @@ spring:
       max-request-size: 12MB
   jackson:
     default-property-inclusion: non_null
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
 
 server:
   port: ${PORT:8080}

@@ -59,9 +59,12 @@ public class EmergencyService {
     private final DirectoryService directory;
     private final NotificationService notifications;
     private final AuditService audit;
+    private final com.healthresponse.platform.notification.ContactAlertService contactAlerts;
 
     public EmergencyService(JdbcClient jdbc, PatientService patients, DirectoryService directory,
-                            NotificationService notifications, AuditService audit) {
+                            NotificationService notifications, AuditService audit,
+                            com.healthresponse.platform.notification.ContactAlertService contactAlerts) {
+        this.contactAlerts = contactAlerts;
         this.jdbc = jdbc;
         this.patients = patients;
         this.directory = directory;
@@ -107,8 +110,7 @@ public class EmergencyService {
         // Event is durable; now place it in the response queue.
         setStatus(id, "CREATED", "SUBMITTED", Instant.now());
         history(id, "CREATED", "SUBMITTED", null, "Placed in response queue", Instant.now());
-        history(id, "SUBMITTED", "SUBMITTED", null,
-                "Emergency contacts were NOT contacted automatically: no SMS/voice provider is configured", Instant.now());
+        history(id, "SUBMITTED", "SUBMITTED", null, contactAlerts.queue(id, patientId, c.demo()), Instant.now());
         notifyStaff(id, hospitalId, "EMERGENCY_SUBMITTED", "New emergency event",
                 "A new emergency event is waiting in the response queue.");
         audit.ok(p, "EMERGENCY_CREATE", "EMERGENCY", id);

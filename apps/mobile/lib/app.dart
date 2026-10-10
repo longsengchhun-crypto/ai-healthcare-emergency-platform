@@ -5,6 +5,7 @@ import 'core/config/app_config.dart';
 import 'core/routing/router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/authentication/auth_controller.dart';
+import 'features/notifications/push_service.dart';
 import 'features/sensors/sensor_controller.dart';
 
 class HealthResponseApp extends ConsumerStatefulWidget {
@@ -47,6 +48,13 @@ class _HealthResponseAppState extends ConsumerState<HealthResponseApp> {
     final router = ref.watch(routerProvider);
 
     // Possible-incident prompt takes over the screen as soon as the detector raises a candidate.
+    // Register for push once signed in (no-op when Firebase is not configured at build time).
+    ref.listen(authControllerProvider.select((s) => s.status), (prev, next) {
+      if (next == AuthStatus.authenticated && prev != next) {
+        ref.read(pushRegistrarProvider).register();
+      }
+    });
+
     ref.listen(sensorControllerProvider.select((s) => s.candidate), (
       prev,
       next,

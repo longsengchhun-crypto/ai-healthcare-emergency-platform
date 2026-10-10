@@ -33,8 +33,20 @@ services:
       SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-}
       AI_PROVIDER: ${AI_PROVIDER:-deterministic-demo}
       DEV_LOG_RESET_TOKENS: ${DEV_LOG_RESET_TOKENS:-false}
+      # Optional channels (see docs/INTEGRATIONS.md). Empty = disabled.
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM: ${TWILIO_FROM:-}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      FCM_SERVICE_ACCOUNT_FILE: ${FCM_SERVICE_ACCOUNT_FILE:-}
     volumes:
       - documents:/data/private-documents
+      # To enable push, mount your Firebase key and set FCM_SERVICE_ACCOUNT_FILE=/run/secrets/firebase.json:
+      # - ../secrets/firebase-service-account.json:/run/secrets/firebase.json:ro
     ports:
       - "127.0.0.1:8080:8080"
 

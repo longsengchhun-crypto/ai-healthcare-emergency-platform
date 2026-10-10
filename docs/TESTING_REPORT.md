@@ -7,7 +7,7 @@ Flutter 3.47.7 / Dart 3.13.5). Nothing here is projected.
 
 | Suite | Command | Result |
 |---|---|---|
-| Backend (H2 + real PostgreSQL) | `cd backend && mvn verify` | **41 passed, 0 failed, 0 skipped** |
+| Backend (H2 + real PostgreSQL) | `cd backend && mvn verify` | **45 passed, 0 failed, 0 skipped** |
 | Mobile static analysis | `flutter analyze` | No issues |
 | Mobile tests | `flutter test` | **14 passed, 1 skipped** (live contract test needs `LIVE_API_URL`) |
 | Mobile ↔ live backend contract test | `LIVE_API_URL=… flutter test test/live_backend_test.dart` | **passed** (run once against the packaged jar on H2) |
@@ -24,6 +24,7 @@ Flutter 3.47.7 / Dart 3.13.5). Nothing here is projected.
 | `FlowIntegrationTest` + `FlowPostgresTest` | 4 + 4 | booking → conflict → IDOR 404 → forbidden confirm → doctor confirm → invalid transition 409 → cancel frees slot; client-supplied status ignored; emergency create, idempotent retry, missing key 400, IDOR, role boundaries, skip-state 409, full lifecycle to RESOLVED, terminal cancel 409, patient cancel |
 | `SecurityAndRecordsIntegrationTest` + `SecurityRecordsPostgresTest` | 8 + 8 | staff blocked from records/admin, patient blocked from admin/clinical types, record isolation + grant/revoke + audited denial, clinician authorship & amendments, upload sniffing/sanitising/authorisation, triage rules, AI summary labelled & verbatim, reminder lifecycle/timezone validation |
 | `AiEvaluationTest` | 1 | measures triage rules, asserts zero missed emergencies on fixture |
+| `NotificationChannelsTest` | 4 | SMS only with consent / never for demo events / retry then FAILED (no false "sent"); Twilio REST client against a local mock server (auth header, form body, error surfacing); push outbox with a fake gateway (SENT, back-off, FAILED, NOT_CONFIGURED) |
 | `ManagementTest` | 4 | hospital/department CRUD permissions + validation, doctor availability self-service, admin doctor list, consent history, retention keeps active-event locations |
 
 The `*PostgresTest` classes subclass the H2 tests and run them against embedded real PostgreSQL (zonky binaries
@@ -42,6 +43,8 @@ The `*PostgresTest` classes subclass the H2 tests and run them against embedded 
   acknowledgement visible to patient, patient forbidden from staff action, triage red flag.
 
 ## Not run / not verified
+
+* **Real providers**: FCM, Twilio and SMTP were never called with real credentials; only fakes and a local mock server.
 
 * **Docker (verified later the same day)**: `docker compose config` passed; `docker compose up --build` built the
   backend image, started PostgreSQL 16 and the backend, both reported `healthy`; against that stack a demo patient

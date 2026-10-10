@@ -7,9 +7,9 @@ L = polish.
 
 | # | Gap | Sev |
 |---|---|---|
-| 1 | Real emergency dispatch, SMS/voice to emergency contacts (no provider; history records "contacts NOT notified") | H |
-| 2 | Firebase Cloud Messaging: `PushGateway` boundary + outbox/retry exist; no FCM client, no `google-services.json`; deliveries end `NOT_CONFIGURED` | H |
-| 3 | Email provider for password-reset / verification; email verification flow | H |
+| 1 | Real emergency dispatch (none). ~~SMS to contacts~~ **Implemented** via Twilio REST with consent + outbox; needs credentials, not tested against real Twilio. Voice calls not implemented | M |
+| 2 | ~~Firebase Cloud Messaging~~ **Implemented** (Admin SDK gateway + app registration via `--dart-define`); needs your Firebase credentials, see INTEGRATIONS.md. Not tested against real FCM | M |
+| 3 | ~~Email for password reset~~ **Implemented** (SMTP); needs credentials, not tested against a real mail server. Email *verification* of new accounts is not implemented | M |
 | 4 | Real AI provider / OCR (only deterministic demonstration provider) | M |
 | 5 | ~~Hospital/department/doctor management~~ **Done**: `/admin/hospitals`, departments, affiliations, `/doctors/me*`; dashboard Hospitals & Doctors pages. Doctor availability has an API but no mobile editor UI | L |
 | 6 | Google Maps embedding / routes (uses `geo:` intent and distance sort only) | M |
@@ -48,3 +48,5 @@ L = polish.
 | 29 | Hospital routing picks the nearest hospital record by distance (not capacity/specialty aware) | M |
 | 30 | `emergency.local_number` defaults to `UNCONFIGURED`; an administrator must set a verified number | — |
 | 31 | The Windows path containing `&` breaks `gradlew.bat` (workaround: `subst`) | L |
+| 32 | No automated data-erasure tool: in-app deactivation disables the account; permanent erasure on request is an operator procedure (not scripted) | M |
+| 33 | `docs/privacy.html` and `account-deletion.html` contain an `[operator email address]` placeholder that must be replaced before submission | M |

@@ -273,9 +273,11 @@ class ContactsScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             const NoticeBanner(
-              'Contacts are stored for your reference and for responders. This app does not automatically text or call them.',
+              'If you turn on SMS alerts below, your contacts receive a text with your name and shared location '
+              'when you send a real (non-demo) emergency request. It needs an SMS provider configured on the server.',
               warning: true,
             ),
+            const _SmsConsentTile(),
             const SizedBox(height: 12),
             if (items.isEmpty)
               const EmptyView(
@@ -521,4 +523,65 @@ class PrivacyScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Opt-in for SMS alerts to emergency contacts. Stored server-side as a consent record.
+class _SmsConsentTile extends ConsumerStatefulWidget {
+  const _SmsConsentTile();
+
+  @override
+  ConsumerState<_SmsConsentTile> createState() => _SmsConsentTileState();
+}
+
+class _SmsConsentTileState extends ConsumerState<_SmsConsentTile> {
+  bool? _value;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_load);
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await ref.read(apiClientProvider).get('/consents') as Map;
+      if (mounted) {
+        setState(() => _value = res['EMERGENCY_CONTACT_SMS'] == true);
+      }
+    } on AppException {
+      if (mounted) setState(() => _value = false);
+    }
+  }
+
+  Future<void> _set(bool v) async {
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(apiClientProvider)
+          .post(
+            '/consents',
+            body: {'purpose': 'EMERGENCY_CONTACT_SMS', 'granted': v},
+          );
+      if (mounted) setState(() => _value = v);
+    } on AppException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(describeError(e))));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SwitchListTile(
+    contentPadding: EdgeInsets.zero,
+    title: const Text('Text my contacts when I send an emergency request'),
+    subtitle: const Text(
+      'Off by default. Never used for demonstration events.',
+    ),
+    value: _value ?? false,
+    onChanged: (_value == null || _busy) ? null : _set,
+  );
 }
