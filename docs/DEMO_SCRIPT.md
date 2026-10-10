@@ -13,13 +13,13 @@ mvn spring-boot:run
 (or `docker compose …` for PostgreSQL). Dashboard: `flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8080`.
 Mobile: `flutter run` on an emulator.
 
-## 1. Patient journey (mobile, `patient.demo@example.test`)
+## 1. Patient journey (mobile, `patient@demo.test`)
 
 1. Sign in → Profile → Health profile: set date of birth / blood group; add an emergency contact.
 2. Discover → *Dr. Demo Cardiologist* (labelled unverified/sample) → pick tomorrow or the next weekday → request.
 3. Appointments shows **REQUESTED**.
 
-## 2. Doctor confirms (`doctor.demo@example.test`)
+## 2. Doctor confirms (`doctor@demo.test`)
 
 4. Sign in on a second emulator/profile (or sign out) → Schedule → *Confirm*.
 5. Back as patient: pull to refresh → **CONFIRMED**; Notifications shows the confirmation.
@@ -34,10 +34,10 @@ Mobile: `flutter run` on an emulator.
 ## 4. Emergency
 
 9. Emergency tab → leave *Demonstration event* on → press and hold. Status **SUBMITTED**.
-10. Dashboard (`staff.demo@example.test`) → Emergency queue → open event → *Acknowledge* → *Assign responder*
+10. Dashboard (`staff@demo.test`) → Emergency queue → open event → *Acknowledge* → *Assign responder*
     (Dr. Demo Cardiologist) → *Mark responder en route* → *arrived* → *resolved*.
 11. Phone shows each status within ~5 s, with timeline entries and "last confirmed by server" time.
-12. Dashboard (`admin.demo@example.test`) → Audit log: `EMERGENCY_CREATE`, `EMERGENCY_VIEW_STAFF`,
+12. Dashboard (`admin@demo.test`) → Audit log: `EMERGENCY_CREATE`, `EMERGENCY_VIEW_STAFF`,
     `EMERGENCY_ACKNOWLEDGE`, `EMERGENCY_ASSIGN`, `EMERGENCY_STATUS_*`.
 
 ## 5. Sensors (demonstration mode)

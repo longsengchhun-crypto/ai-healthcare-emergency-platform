@@ -50,9 +50,9 @@ void main() {
   final base = Platform.environment['LIVE_API_URL'];
 
   test('mobile client and models work end to end against the backend', () async {
-    final patient = await _login(base!, 'patient.demo@example.test');
-    final doctor = await _login(base, 'doctor.demo@example.test');
-    final staff = await _login(base, 'staff.demo@example.test');
+    final patient = await _login(base!, 'patient@demo.test');
+    final doctor = await _login(base, 'doctor@demo.test');
+    final staff = await _login(base, 'staff@demo.test');
 
     final me = CurrentUser.fromJson(
       await patient.get('/users/me') as Map<String, dynamic>,

@@ -42,10 +42,10 @@ Demo accounts (created only when `SEED_DEMO_DATA=true`; password = your `SEED_DE
 
 | Role | Email |
 |---|---|
-| Patient | `patient.demo@example.test` |
-| Doctor | `doctor.demo@example.test`, `doctor2.demo@example.test` |
-| Hospital staff | `staff.demo@example.test` |
-| Administrator | `admin.demo@example.test` |
+| Patient | `patient@demo.test` |
+| Doctor | `doctor@demo.test`, `doctor2@demo.test` |
+| Hospital staff | `staff@demo.test` |
+| Administrator | `admin@demo.test` |
 
 All demo records are flagged `is_demo` and use the reserved `.test` domain. **Never enable seeding in production.**
 

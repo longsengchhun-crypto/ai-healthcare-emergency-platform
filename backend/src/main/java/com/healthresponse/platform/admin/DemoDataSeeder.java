@@ -29,11 +29,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class DemoDataSeeder implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(DemoDataSeeder.class);
 
-    public static final String PATIENT = "patient.demo@example.test";
-    public static final String DOCTOR = "doctor.demo@example.test";
-    public static final String DOCTOR2 = "doctor2.demo@example.test";
-    public static final String STAFF = "staff.demo@example.test";
-    public static final String ADMIN = "admin.demo@example.test";
+    public static final String PATIENT = "patient@demo.test";
+    public static final String DOCTOR = "doctor@demo.test";
+    public static final String DOCTOR2 = "doctor2@demo.test";
+    public static final String STAFF = "staff@demo.test";
+    public static final String ADMIN = "admin@demo.test";
 
     private record Hosp(String km, String latin, String address, String city, String phone, double lat, double lon,
                         String hours) {}
@@ -53,16 +53,16 @@ public class DemoDataSeeder implements ApplicationRunner {
     private static final Doc[] DOCTORS = {
         new Doc("វេជ្ជ. សុខ វិសាល", "Dr. Sok Visal", "Cardiology", "បេះដូង", 0, 14, "ខ្មែរ, English", DOCTOR),
         new Doc("វេជ្ជ. ចាន់ សុភាព", "Dr. Chan Sopheap", "General Practice", "វេជ្ជសាស្ត្រទូទៅ", 1, 9, "ខ្មែរ, English", DOCTOR2),
-        new Doc("វេជ្ជ. គង់ សុភ័ក្ត្រ", "Dr. Kong Sophak", "Pediatrics", "កុមារ", 0, 11, "ខ្មែរ, English, Français", "doctor3.demo@example.test"),
-        new Doc("វេជ្ជ. ហេង រតនា", "Dr. Heng Rattana", "Orthopedics", "ឆ្អឹង និងសន្លាក់", 2, 16, "ខ្មែរ, English", "doctor4.demo@example.test"),
-        new Doc("វេជ្ជ. ឈិន មុនីរ័ត្ន", "Dr. Chhin Monirath", "Obstetrics & Gynecology", "ស្ត្រី និងសម្ភព", 0, 12, "ខ្មែរ, English", "doctor5.demo@example.test"),
-        new Doc("វេជ្ជ. ពៅ សុវណ្ណ", "Dr. Pov Sovann", "Dermatology", "ស្បែក", 5, 8, "ខ្មែរ, English", "doctor6.demo@example.test"),
-        new Doc("វេជ្ជ. លី ចន្ធូ", "Dr. Ly Chanthou", "Ophthalmology", "ភ្នែក", 1, 10, "ខ្មែរ, 中文", "doctor7.demo@example.test"),
-        new Doc("វេជ្ជ. ម៉ៅ សំអាត", "Dr. Mao Samat", "Internal Medicine", "វេជ្ជសាស្ត្រផ្ទៃក្នុង", 3, 18, "ខ្មែរ", "doctor8.demo@example.test"),
-        new Doc("វេជ្ជ. ស៊ឹម ស្រីនាង", "Dr. Sim Sreyneang", "Pediatrics", "កុមារ", 4, 7, "ខ្មែរ, English", "doctor9.demo@example.test"),
-        new Doc("វេជ្ជ. អ៊ុក ដារ៉ា", "Dr. Ouk Dara", "Emergency Medicine", "សង្គ្រោះបន្ទាន់", 0, 13, "ខ្មែរ, English", "doctor10.demo@example.test"),
-        new Doc("វេជ្ជ. រស់ ម៉ាលីន", "Dr. Ros Maleen", "Dentistry", "ទន្តសាស្ត្រ", 2, 6, "ខ្មែរ, English", "doctor11.demo@example.test"),
-        new Doc("វេជ្ជ. តាំង វុទ្ធី", "Dr. Tang Vutthy", "Neurology", "សរសៃប្រសាទ", 5, 20, "ខ្មែរ, English", "doctor12.demo@example.test"),
+        new Doc("វេជ្ជ. គង់ សុភ័ក្ត្រ", "Dr. Kong Sophak", "Pediatrics", "កុមារ", 0, 11, "ខ្មែរ, English, Français", "doctor3@demo.test"),
+        new Doc("វេជ្ជ. ហេង រតនា", "Dr. Heng Rattana", "Orthopedics", "ឆ្អឹង និងសន្លាក់", 2, 16, "ខ្មែរ, English", "doctor4@demo.test"),
+        new Doc("វេជ្ជ. ឈិន មុនីរ័ត្ន", "Dr. Chhin Monirath", "Obstetrics & Gynecology", "ស្ត្រី និងសម្ភព", 0, 12, "ខ្មែរ, English", "doctor5@demo.test"),
+        new Doc("វេជ្ជ. ពៅ សុវណ្ណ", "Dr. Pov Sovann", "Dermatology", "ស្បែក", 5, 8, "ខ្មែរ, English", "doctor6@demo.test"),
+        new Doc("វេជ្ជ. លី ចន្ធូ", "Dr. Ly Chanthou", "Ophthalmology", "ភ្នែក", 1, 10, "ខ្មែរ, 中文", "doctor7@demo.test"),
+        new Doc("វេជ្ជ. ម៉ៅ សំអាត", "Dr. Mao Samat", "Internal Medicine", "វេជ្ជសាស្ត្រផ្ទៃក្នុង", 3, 18, "ខ្មែរ", "doctor8@demo.test"),
+        new Doc("វេជ្ជ. ស៊ឹម ស្រីនាង", "Dr. Sim Sreyneang", "Pediatrics", "កុមារ", 4, 7, "ខ្មែរ, English", "doctor9@demo.test"),
+        new Doc("វេជ្ជ. អ៊ុក ដារ៉ា", "Dr. Ouk Dara", "Emergency Medicine", "សង្គ្រោះបន្ទាន់", 0, 13, "ខ្មែរ, English", "doctor10@demo.test"),
+        new Doc("វេជ្ជ. រស់ ម៉ាលីន", "Dr. Ros Maleen", "Dentistry", "ទន្តសាស្ត្រ", 2, 6, "ខ្មែរ, English", "doctor11@demo.test"),
+        new Doc("វេជ្ជ. តាំង វុទ្ធី", "Dr. Tang Vutthy", "Neurology", "សរសៃប្រសាទ", 5, 20, "ខ្មែរ, English", "doctor12@demo.test"),
     };
 
     private static final String[] DEPARTMENTS = {
