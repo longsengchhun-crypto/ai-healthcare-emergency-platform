@@ -1,7 +1,8 @@
 # Deployment Guide
 
-> Status: configuration is written but **not exercised on a real host**. No cloud account was available and Docker
-> could not run on the build machine, so every step below is unverified end-to-end. Treat as a starting point.
+> Status: the Docker/Compose path (section 3) was **verified locally**: image build, PostgreSQL + backend health,
+> and an emergency create/acknowledge flow. Sections 4-6 (cloud host, TLS proxy, managed DB) were **not** exercised
+> because no cloud account exists; treat them as a starting point.
 
 ## 1. Environments
 

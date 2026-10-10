@@ -27,7 +27,7 @@ L = polish.
 
 | # | Item |
 |---|---|
-| 16 | Docker image build, `docker compose up`, container health check (WSL2 unavailable on build machine) |
+| 16 | ~~Docker build/compose/health~~ **Verified 2026-10-10**: image builds, PostgreSQL 16 + backend start, both healthy, emergency create + staff acknowledge succeed over HTTP. Image not scanned; production topology (TLS proxy, managed DB) untested |
 | 17 | GitHub Actions workflow execution |
 | 18 | Any run on an Android emulator/device (UI polish, permissions, GPS, sensors, notifications, call/map intents) |
 | 19 | Play-signing/upload and Play Console pre-launch report (AAB is signed with a local upload key) |

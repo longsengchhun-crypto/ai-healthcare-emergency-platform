@@ -43,8 +43,9 @@ The `*PostgresTest` classes subclass the H2 tests and run them against embedded 
 
 ## Not run / not verified
 
-* **Docker**: `docker compose config` and the backend Docker image build were **not** run — Docker Desktop is
-  installed but WSL2 is not enabled on this machine, so the daemon cannot start.
+* **Docker (verified later the same day)**: `docker compose config` passed; `docker compose up --build` built the
+  backend image, started PostgreSQL 16 and the backend, both reported `healthy`; against that stack a demo patient
+  created an emergency (`SUBMITTED`) and demo staff acknowledged it (`ACKNOWLEDGED`). Image vulnerability scan not run.
 * **GitHub Actions**: workflow written, never executed.
 * **On-device / emulator run**: no emulator or phone was available; the Android UI, runtime permission prompts,
   GPS, sensors, local notifications and tel:/geo: intents were **not exercised**. Only compilation, static analysis,
