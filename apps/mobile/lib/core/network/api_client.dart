@@ -135,11 +135,13 @@ class ApiClient {
     String path, {
     required String filename,
     required List<int> bytes,
+    Map<String, String>? fields,
   }) => _run(
     () => _dio.post<dynamic>(
       path,
       data: FormData.fromMap({
         'file': MultipartFile.fromBytes(bytes, filename: filename),
+        ...?fields,
       }),
       options: Options(contentType: 'multipart/form-data'),
     ),

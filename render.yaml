@@ -28,8 +28,20 @@ services:
         value: "30"
       - key: FORWARD_HEADERS
         value: framework # Render's proxy sets X-Forwarded-For
+      # AI: deterministic-demo = rules only (no data leaves the server). anthropic = Claude on top of the rules; it also
+      # needs AI_API_KEY (paste it in the Render dashboard, never in git). Without the key the app keeps working on rules.
       - key: AI_PROVIDER
-        value: deterministic-demo
+        value: anthropic
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: claude-opus-5-5
+      - key: AI_TIMEOUT_SECONDS
+        value: "20"
+      - key: AI_MAX_RETRIES
+        value: "2"
+      - key: AI_RATE_LIMIT_PER_MINUTE
+        value: "10"
       # Optional channels (leave empty to disable) - see docs/INTEGRATIONS.md
       - key: MAIL_HOST
         sync: false

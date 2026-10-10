@@ -52,6 +52,55 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   }
 }
 
+/// Titled bullet list; renders nothing for a missing/empty list (older servers do not send these fields).
+Widget _bullets(BuildContext context, String title, List<dynamic>? items) {
+  if (items == null || items.isEmpty) return const SizedBox.shrink();
+  return Padding(
+    padding: const EdgeInsets.only(top: Gap.md),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        for (final i in items)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('• $i', style: const TextStyle(height: 1.45)),
+          ),
+      ],
+    ),
+  );
+}
+
+/// Says honestly whether a language model contributed, or the answer is rule-based only.
+class _AiBadge extends StatelessWidget {
+  const _AiBadge({required this.assessedBy, required this.aiStatus});
+  final String? assessedBy;
+  final String? aiStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    if (assessedBy == null) return const SizedBox.shrink();
+    final ai = assessedBy == 'RULES+AI';
+    final unavailable =
+        !ai && aiStatus != null && aiStatus != 'NOT_USED' && aiStatus != 'SKIPPED_EMERGENCY';
+    final label = ai
+        ? context.t('ជំនួយដោយ AI + ច្បាប់សុវត្ថិភាព', 'AI-assisted + safety rules')
+        : unavailable
+        ? context.t(
+            'AI មិនអាចប្រើបាន - លទ្ធផលតាមច្បាប់ប៉ុណ្ណោះ',
+            'AI unavailable - rule-based result only',
+          )
+        : context.t('លទ្ធផលតាមច្បាប់សុវត្ថិភាព', 'Safety-rule result');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Pill(label, tone: ai ? Tone.teal : (unavailable ? Tone.amber : Tone.neutral)),
+      ),
+    );
+  }
+}
+
 class _TriageTab extends ConsumerStatefulWidget {
   const _TriageTab();
 
@@ -146,10 +195,44 @@ class _TriageTabState extends ConsumerState<_TriageTab> {
                   ),
                 ),
                 const SizedBox(height: 8),
+                _AiBadge(
+                  assessedBy: _result!['assessedBy'] as String?,
+                  aiStatus: _result!['aiStatus'] as String?,
+                ),
                 Text(
                   _result!['guidance'] as String,
                   style: const TextStyle(height: 1.55),
                 ),
+                _bullets(
+                  context,
+                  context.t('ហេតុផល', 'Why'),
+                  _result!['reasons'] as List?,
+                ),
+                _bullets(
+                  context,
+                  context.t('ជំហានបន្ទាប់', 'Suggested next steps'),
+                  _result!['nextSteps'] as List?,
+                ),
+                _bullets(
+                  context,
+                  context.t(
+                    'សញ្ញាគ្រោះថ្នាក់ - ហៅសង្គ្រោះភ្លាមៗ',
+                    'Warning signs - call emergency services at once',
+                  ),
+                  _result!['warningSigns'] as List?,
+                ),
+                if (((_result!['uncertainty'] as String?) ?? '').isNotEmpty) ...[
+                  const SizedBox(height: Gap.md),
+                  Text(
+                    context.t('អ្វីដែលមិនច្បាស់', 'What is uncertain'),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _result!['uncertainty'] as String,
+                    style: const TextStyle(height: 1.5),
+                  ),
+                ],
                 if ((_result!['followUpQuestions'] as List).isNotEmpty) ...[
                   const SizedBox(height: Gap.md),
                   Text(
@@ -280,6 +363,19 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
                   r['summary'] as String,
                   style: const TextStyle(height: 1.55),
                 ),
+                if (((r['aiExplanation'] as String?) ?? '').isNotEmpty) ...[
+                  const SizedBox(height: Gap.lg),
+                  Notice(
+                    '${context.t('ការពន្យល់ដោយ AI (មិនមែនជាកំណត់ត្រា)', 'AI explanation (not part of your record)')}: ${r['aiExplanation']}',
+                    tone: Tone.blue,
+                  ),
+                ],
+                _group(
+                  context,
+                  context.t('ព័ត៌មានដែលបាត់', 'Not found in your records'),
+                  (r['missingInformation'] as List?) ?? const [],
+                  Icons.help_outline_rounded,
+                ),
                 _group(
                   context,
                   context.t('ជំងឺដែលបានកត់ត្រា', 'Recorded conditions'),
@@ -345,10 +441,38 @@ class _ExtractTabState extends ConsumerState<_ExtractTab> {
   Future<void> _pick() async {
     final picked = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['txt'],
+      allowedExtensions: ['txt', 'pdf', 'png', 'jpg', 'jpeg', 'webp'],
     );
     if (picked.isEmpty) return;
     final file = picked.first;
+    if (!mounted) return;
+    final isText = file.name.toLowerCase().endsWith('.txt');
+    if (!isText) {
+      // PDFs/images are read by an external AI service: explicit consent first.
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: Text(c.t('ផ្ញើទៅសេវា AI?', 'Send to an AI service?')),
+          content: Text(
+            c.t(
+              'ឯកសារទាំងមូល រួមទាំងឈ្មោះ និងលេខសម្គាល់ដែលមាននៅលើវា នឹងត្រូវផ្ញើទៅសេវា AI ខាងក្រៅ (Anthropic) ដើម្បីអាន។ តម្លៃដែលអានមិនទាន់ត្រូវបានផ្ទៀងផ្ទាត់ទេ។',
+              'The whole document, including any names and ID numbers on it, will be sent to an external AI service (Anthropic) to be read. The values it reads are not verified - always check them against the original.',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: Text(c.t('បោះបង់', 'Cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: Text(c.t('យល់ព្រម និងផ្ញើ', 'I agree, send it')),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -357,7 +481,12 @@ class _ExtractTabState extends ConsumerState<_ExtractTab> {
       final bytes = await file.readAsBytes();
       final res = await ref
           .read(apiClientProvider)
-          .upload('/ai/document-extraction', filename: file.name, bytes: bytes);
+          .upload(
+            '/ai/document-extraction',
+            filename: file.name,
+            bytes: bytes,
+            fields: isText ? null : {'externalProcessingConsent': 'true'},
+          );
       setState(() => _result = Map<String, dynamic>.from(res as Map));
     } on AppException catch (e) {
       setState(() => _error = e);
@@ -377,15 +506,15 @@ class _ExtractTabState extends ConsumerState<_ExtractTab> {
       children: [
         Notice(
           context.t(
-            'ឧបករណ៍ពិសោធន៍សម្រាប់ឯកសារអក្សរធម្មតា (.txt) ប៉ុណ្ណោះ។ តម្លៃដែលទាញចេញមិនទាន់ត្រូវបានផ្ទៀងផ្ទាត់ជាវេជ្ជសាស្ត្រទេ។ PDF និងរូបភាពត្រូវការ OCR ដែលមិនទាន់បានកំណត់។',
-            'Demonstration extractor for plain-text (.txt) files only. Values are not clinically validated. PDFs and images need an OCR provider that is not configured.',
+            '.txt ត្រូវបានអានដោយច្បាប់នៅលើម៉ាស៊ីនមេ។ PDF និងរូបភាពត្រូវបានអានដោយសេវា AI ខាងក្រៅ បន្ទាប់ពីអ្នកយល់ព្រម។ តម្លៃដែលទាញចេញមិនទាន់ត្រូវបានផ្ទៀងផ្ទាត់ទេ។',
+            'Plain-text (.txt) files are read by rules on the server. PDFs and images are read by an external AI service after you agree. Extracted values are never verified - check each one against the original.',
           ),
           tone: Tone.amber,
         ),
         const SizedBox(height: Gap.lg),
         PrimaryButton(
           icon: Icons.upload_file_rounded,
-          label: context.t('ជ្រើសរើសឯកសារ .txt', 'Choose a .txt document'),
+          label: context.t('ជ្រើសរើសឯកសារ', 'Choose a document (.txt, PDF, image)'),
           busy: _busy,
           onPressed: _pick,
         ),
@@ -431,14 +560,36 @@ class _ExtractTabState extends ConsumerState<_ExtractTab> {
                         ],
                       ),
                     ),
-                    Pill(
-                      '${((f['confidence'] as num) * 100).round()}%',
-                      tone: Tone.teal,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Pill(
+                          f['verification'] == 'UNVERIFIED_MODEL_READ'
+                              ? context.t('មិនទាន់ផ្ទៀងផ្ទាត់', 'Unverified')
+                              : '${((f['confidence'] as num) * 100).round()}%',
+                          tone: f['needsReview'] == true
+                              ? Tone.amber
+                              : Tone.teal,
+                        ),
+                        if (f['needsReview'] == true)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              context.t('ត្រូវពិនិត្យ', 'Check this'),
+                              style: TextStyle(color: p.amber, fontSize: 12),
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
+          _bullets(
+            context,
+            context.t('ការព្រមាន', 'Warnings'),
+            _result!['warnings'] as List?,
+          ),
           const SizedBox(height: Gap.sm),
           Text(
             '${_result!['notice']}',

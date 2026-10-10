@@ -10,7 +10,7 @@ L = polish.
 | 1 | Real emergency dispatch (none). ~~SMS to contacts~~ **Implemented** via Twilio REST with consent + outbox; needs credentials, not tested against real Twilio. Voice calls not implemented | M |
 | 2 | ~~Firebase Cloud Messaging~~ **Implemented** (Admin SDK gateway + app registration via `--dart-define`); needs your Firebase credentials, see INTEGRATIONS.md. Not tested against real FCM | M |
 | 3 | ~~Email for password reset~~ **Implemented** (SMTP); needs credentials, not tested against a real mail server. Email *verification* of new accounts is not implemented | M |
-| 4 | Real AI provider / OCR (only deterministic demonstration provider) | M |
+| 4 | Real AI provider / OCR: **implemented in code** (Claude API provider + PDF/image reading by the model), verified only against a mocked provider and a local fake HTTP server. **Not yet verified with a live API key.** No clinical validation; no evaluation of the model-assisted triage on real or labelled data; no separate OCR engine; names inside free text cannot be redacted | M |
 | 5 | ~~Hospital/department/doctor management~~ **Done**: `/admin/hospitals`, departments, affiliations, `/doctors/me*`; dashboard Hospitals & Doctors pages. Doctor availability has an API but no mobile editor UI | L |
 | 6 | Google Maps embedding / routes (uses `geo:` intent and distance sort only) | M |
 | 7 | WebSocket/SSE real-time updates (5 s polling instead) | M |

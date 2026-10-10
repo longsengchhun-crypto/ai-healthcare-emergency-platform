@@ -1,8 +1,8 @@
 package com.healthresponse.platform.ai;
 
 import com.healthresponse.platform.ai.AiService.ExtractionResult;
+import com.healthresponse.platform.ai.AiService.TriageOutcome;
 import com.healthresponse.platform.ai.AiService.SummaryResult;
-import com.healthresponse.platform.ai.TriageEngine.Result;
 import com.healthresponse.platform.security.AuthPrincipal;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -31,12 +31,14 @@ public class AiController {
     }
 
     @PostMapping(value = "/document-extraction", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ExtractionResult extract(@AuthenticationPrincipal AuthPrincipal p, @RequestParam("file") MultipartFile file) {
-        return service.extract(p, file);
+    public ExtractionResult extract(@AuthenticationPrincipal AuthPrincipal p, @RequestParam("file") MultipartFile file,
+                                    @RequestParam(value = "externalProcessingConsent", defaultValue = "false")
+                                    boolean externalProcessingConsent) {
+        return service.extract(p, file, externalProcessingConsent);
     }
 
     @PostMapping("/triage")
-    public Result triage(@AuthenticationPrincipal AuthPrincipal p, @Valid @RequestBody TriageRequest r) {
+    public TriageOutcome triage(@AuthenticationPrincipal AuthPrincipal p, @Valid @RequestBody TriageRequest r) {
         return service.triage(p, r.symptoms());
     }
 }

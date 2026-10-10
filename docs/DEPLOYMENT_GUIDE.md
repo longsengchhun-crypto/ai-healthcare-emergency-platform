@@ -21,7 +21,10 @@
 | `CORS_ALLOWED_ORIGINS` | yes (dashboard) | comma-separated exact origins |
 | `STORAGE_ROOT` | yes | private document directory (mounted volume) |
 | `SEED_DEMO_DATA`, `SEED_DEMO_PASSWORD` | dev only | fictional demo accounts |
-| `AI_PROVIDER` | no | only `deterministic-demo` exists |
+| `AI_PROVIDER` | no | `deterministic-demo` (default, rules only) or `anthropic` (Claude; needs `AI_API_KEY`) |
+| `AI_API_KEY` | for `anthropic` | Claude API key. Backend secret only - see AI_DOCUMENTATION.md |
+| `AI_MODEL` | no | default `claude-opus-5-5` |
+| `AI_TIMEOUT_SECONDS` / `AI_MAX_RETRIES` / `AI_RATE_LIMIT_PER_MINUTE` | no | 20 / 2 / 10 per user |
 | `DEV_LOG_RESET_TOKENS` | dev only | logs reset tokens; never in production |
 | `PORT` | no | default 8080 |
 

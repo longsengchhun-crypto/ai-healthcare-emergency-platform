@@ -68,6 +68,11 @@ app:
   ai:
     provider: ${AI_PROVIDER:deterministic-demo}
     api-key: ${AI_API_KEY:}
+    model: ${AI_MODEL:claude-opus-5-5}
+    timeout-seconds: ${AI_TIMEOUT_SECONDS:20}
+    max-retries: ${AI_MAX_RETRIES:2}
+    rate-limit-per-minute: ${AI_RATE_LIMIT_PER_MINUTE:10}
+    base-url: ${AI_BASE_URL:}
   fcm:
     enabled: ${FCM_ENABLED:false}
   rate-limit:
