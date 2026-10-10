@@ -30,5 +30,7 @@ class DatabaseUrlTest {
                 .isEqualTo("jdbc:postgresql://host:6543/db");
         assertThat(translate("jdbc:postgresql://h/db").get("spring.datasource.url")).isEqualTo("jdbc:postgresql://h/db");
         assertThat(translate("mysql://u:p@h/db")).isEmpty();
+        assertThat(translate("postgresql://u:p@ep-x.neon.tech/neondb?sslmode=require&channel_binding=require")
+                .get("spring.datasource.url")).isEqualTo("jdbc:postgresql://ep-x.neon.tech:5432/neondb?sslmode=require");
     }
 }

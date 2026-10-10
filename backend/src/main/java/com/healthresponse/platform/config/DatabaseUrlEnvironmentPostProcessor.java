@@ -39,7 +39,13 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
         String scheme = uri.getScheme();
         if (scheme == null || !(scheme.equals("postgres") || scheme.equals("postgresql"))) return out;
         int port = uri.getPort() == -1 ? 5432 : uri.getPort();
-        String query = uri.getRawQuery() == null ? "" : "?" + uri.getRawQuery();
+        // libpq-only options (e.g. channel_binding from Neon) are unknown to the JDBC driver: drop them.
+        String query = "";
+        if (uri.getRawQuery() != null) {
+            String kept = java.util.Arrays.stream(uri.getRawQuery().split("&"))
+                    .filter(kv -> !kv.startsWith("channel_binding=")).collect(java.util.stream.Collectors.joining("&"));
+            if (!kept.isEmpty()) query = "?" + kept;
+        }
         out.put("spring.datasource.url", "jdbc:postgresql://" + uri.getHost() + ":" + port + uri.getRawPath() + query);
         String userInfo = uri.getUserInfo();
         if (userInfo != null) {

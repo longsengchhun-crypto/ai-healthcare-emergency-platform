@@ -11,15 +11,19 @@ One container (`Dockerfile.cloud`) serves everything on a single HTTPS address:
 ## Option A — Render (recommended, free, no server knowledge)
 
 > Free-tier limits you should know: the service **sleeps after ~15 min idle** (the first visit afterwards takes
-> ~30–60 s to wake), the free database is **deleted after 30 days** unless upgraded, and uploaded files are lost on
-> every restart. That is fine for team testing, not for real patients.
+> ~30–60 s to wake) and uploaded files are lost on every restart. The Neon database does **not** expire. Fine for team
+> testing, not for real patients.
 
 1. **Merge the code to `main`** (done for you: branch `main` exists on GitHub).
 2. Go to https://render.com → **Get started** → sign up with **GitHub**.
 3. **New → Blueprint** → choose repository `longsengchhun-crypto/ai-healthcare-emergency-platform` → branch `main`
    → **Connect**. Render reads `render.yaml`.
 4. It asks for the secret values marked "sync: false". Fill only:
-   * `SEED_DEMO_PASSWORD` = `Health2026!` (or your own, 10+ characters) — this is the password of all demo accounts.
+   * `DATABASE_URL` = your **Neon** connection string, using the **direct** host (no `-pooler` in the name), e.g.
+     `postgresql://USER:PASSWORD@ep-xxxx.REGION.aws.neon.tech/neondb?sslmode=require`
+     (Neon console → your project → **Connect** → untick "Connection pooling").
+   * `SEED_DEMO_PASSWORD` = `Health2026!`. If the database was already seeded, existing accounts keep the password
+     they were created with; this value is only used when the demo data is first created.
    * Leave the MAIL / TWILIO fields empty (optional, see `INTEGRATIONS.md`).
 5. Click **Apply**. The first build takes **8–15 minutes** (it builds Flutter web twice and the backend).
 6. When the service shows **Live**, open the URL Render shows, e.g. `https://healthresponse-xxxx.onrender.com`.
