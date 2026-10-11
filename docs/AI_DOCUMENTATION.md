@@ -38,6 +38,14 @@ explicit consent before every summary and every document upload, naming the prov
 `GET /api/v1/ai/status` (provider name, `providerMayUseDataForTraining`; never the key). The backend itself refuses to
 send records for a summary without `externalProcessingConsent=true`.
 
+**Free-tier quota (measured 2026-10-11):** Google returned `GenerateRequestsPerDayPerProjectPerModel-FreeTier`
+with a value of **20 requests per day per model**, resetting about every 24 h. Each triage, summary or document
+upload is 1 request (2 if the first answer is rejected and re-asked). So one model serves roughly 10-20 AI actions a day.
+The client therefore tries several free models in order (`gemini-3.8-flash`, `gemini-3.6-flash`,
+`gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`; or a comma list in `AI_MODEL`), skips a model until the reset time
+Google reports, and falls back to the rules when all are exhausted (`aiStatus: RATE_LIMITED`). Expect on the order of
+tens of AI actions per day in total - fine for a demo, not for many users. Limits are Google's and can change.
+
 The Gemini client talks to `POST /v1beta/models/{model}:generateContent` with the key in the `x-goog-api-key` header.
 It has been tested only against a local fake server (request shape, error mapping, retry, timeout); the live Google
 API has **not** been called.

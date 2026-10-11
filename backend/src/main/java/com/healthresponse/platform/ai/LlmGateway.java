@@ -44,7 +44,7 @@ public class LlmGateway {
                 Duration timeout = Duration.ofSeconds(ai.timeoutSeconds() > 0 ? ai.timeoutSeconds() : 20);
                 int retries = Math.max(0, ai.maxRetries());
                 if (PROVIDER_GEMINI.equals(providerName)) {
-                    c = new GeminiLlmClient(key, blankModel ? "gemini-3.8-flash" : ai.model().trim(), timeout, retries,
+                    c = new GeminiLlmClient(key, geminiModels(blankModel ? "" : ai.model().trim()), timeout, retries,
                             ai.baseUrl());
                 } else {
                     c = new AnthropicLlmClient(key, blankModel ? "claude-opus-5-5" : ai.model().trim(), timeout,
@@ -67,6 +67,19 @@ public class LlmGateway {
             if (e.kind() != Kind.BAD_OUTPUT) throw e;
         }
         return parser.apply(complete(userId, request));
+    }
+
+    /** Free-tier models tried in order; each has its own small daily quota, so falling through extends capacity. */
+    static final java.util.List<String> GEMINI_DEFAULTS = java.util.List.of(
+            "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite");
+
+    /** Configured model first, then the defaults not already listed; an explicit comma list is used as given. */
+    static String geminiModels(String configured) {
+        if (configured.contains(",")) return configured;
+        java.util.List<String> out = new java.util.ArrayList<>();
+        if (!configured.isBlank()) out.add(configured);
+        for (String m : GEMINI_DEFAULTS) if (!out.contains(m)) out.add(m);
+        return String.join(",", out);
     }
 
     /** Test support: clears rate-limit windows and circuit-breaker state. */

@@ -123,6 +123,55 @@ class GeminiLlmClientTest {
     }
 
     @Test
+    void exhaustedModelIsSkippedUntilItsQuotaResetsAndTheNextModelIsUsed() {
+        java.util.List<String> paths = new java.util.concurrent.CopyOnWriteArrayList<>();
+        server.removeContext("/");
+        server.createContext("/", ex -> {
+            String path = ex.getRequestURI().getPath();
+            paths.add(path);
+            ex.getRequestBody().readAllBytes();
+            boolean first = path.contains("model-a");
+            String payload = first
+                    ? "{\"error\":{\"code\":429,\"message\":\"quota\",\"details\":[{\"retryDelay\":\"83725s\"}]}}"
+                    : OK;
+            byte[] out = payload.getBytes(StandardCharsets.UTF_8);
+            ex.getResponseHeaders().add("content-type", "application/json");
+            ex.sendResponseHeaders(first ? 429 : 200, out.length);
+            ex.getResponseBody().write(out);
+            ex.close();
+        });
+        GeminiLlmClient c = new GeminiLlmClient("k", "model-a, model-b", Duration.ofSeconds(5), 2,
+                "http://127.0.0.1:" + server.getAddress().getPort());
+        assertThat(c.complete(req())).isEqualTo("{\"ok\":true}");
+        assertThat(paths).hasSize(2); // model-a refused once, model-b answered
+        paths.clear();
+        assertThat(c.complete(req())).isEqualTo("{\"ok\":true}");
+        assertThat(paths).hasSize(1).allMatch(x -> x.contains("model-b")); // model-a not asked again
+    }
+
+    @Test
+    void whenEveryModelIsExhaustedNoRequestIsSentAndRateLimitedIsReported() {
+        status.set(429);
+        body.set("{\"error\":{\"code\":429,\"details\":[{\"retryDelay\":\"3600s\"}]}}");
+        GeminiLlmClient c = new GeminiLlmClient("k", "m1,m2", Duration.ofSeconds(5), 0,
+                "http://127.0.0.1:" + server.getAddress().getPort());
+        assertThatThrownBy(() -> c.complete(req()))
+                .isInstanceOfSatisfying(LlmException.class, e -> assertThat(e.kind()).isEqualTo(Kind.RATE_LIMITED));
+        int after = hits.get();
+        assertThat(after).isEqualTo(2);
+        assertThatThrownBy(() -> c.complete(req())).isInstanceOf(LlmException.class);
+        assertThat(hits.get()).isEqualTo(after);
+    }
+
+    @Test
+    void modelListKeepsConfiguredFirstThenDefaults() {
+        assertThat(LlmGateway.geminiModels("")).startsWith("gemini-3.8-flash,gemini-3.6-flash");
+        assertThat(LlmGateway.geminiModels("gemini-3.5-flash-lite"))
+                .startsWith("gemini-3.5-flash-lite,gemini-3.8-flash").doesNotContain("flash-lite,gemini-3.5-flash-lite");
+        assertThat(LlmGateway.geminiModels("a,b")).isEqualTo("a,b");
+    }
+
+    @Test
     void slowProviderIsCutOffByTheTimeout() {
         delayMs.set(3000);
         long t0 = System.currentTimeMillis();
