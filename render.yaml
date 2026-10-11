@@ -37,7 +37,7 @@ services:
       - key: AI_API_KEY
         sync: false
       - key: AI_MODEL
-        value: gemini-2.5-flash
+        value: gemini-3.8-flash
       - key: AI_TIMEOUT_SECONDS
         value: "20"
       - key: AI_MAX_RETRIES

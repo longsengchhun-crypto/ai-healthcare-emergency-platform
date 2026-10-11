@@ -75,8 +75,13 @@ public class SummaryAdvisor {
             textByRef.put("R" + i, ("title=" + title + "\n" + body));
             i++;
         }
-        truncated = truncated || byRef.size() < records.size();
-        String raw = gateway.complete(userId, new LlmClient.Request(SYSTEM, prompt.toString(), 4096));
+        final boolean wasTruncated = truncated || byRef.size() < records.size();
+        return gateway.completeParsed(userId, new LlmClient.Request(SYSTEM, prompt.toString(), 4096),
+                raw -> interpret(raw, byRef, textByRef, wasTruncated));
+    }
+
+    private Enrichment interpret(String raw, Map<String, RecordView> byRef, Map<String, String> textByRef,
+                                 boolean truncated) {
         JsonNode n = OutputGuard.parseObject(raw);
 
         List<Fact> facts = new ArrayList<>();
@@ -102,8 +107,8 @@ public class SummaryAdvisor {
         String overview = null;
         boolean overviewRejected = false;
         try {
-            String o = OutputGuard.safeText(n.path("overview").asText(null), 1200);
             String sourceAll = String.join("\n", textByRef.values());
+            String o = OutputGuard.safeText(n.path("overview").asText(null), 1200, sourceAll);
             Matcher m = NUMBER.matcher(o);
             while (m.find()) {
                 if (!sourceAll.contains(m.group())) throw OutputGuard.bad("number not in records");

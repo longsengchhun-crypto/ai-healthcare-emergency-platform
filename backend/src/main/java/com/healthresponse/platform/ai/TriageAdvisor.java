@@ -52,8 +52,7 @@ public class TriageAdvisor {
         String denied = deniedRules.isEmpty() ? "" : "\n(Automatic checker note: the person explicitly denied: "
                 + String.join(", ", deniedRules) + ")";
         String user = "Symptom description between the markers:\n<<<SYMPTOMS\n" + redactedSymptoms + "\nSYMPTOMS>>>" + denied;
-        String raw = gateway.complete(userId, new LlmClient.Request(SYSTEM, user, 4096));
-        return parse(raw);
+        return gateway.completeParsed(userId, new LlmClient.Request(SYSTEM, user, 4096), TriageAdvisor::parse);
     }
 
     static Advice parse(String raw) {

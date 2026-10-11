@@ -20,9 +20,17 @@ final class OutputGuard {
     static final ObjectMapper JSON = new ObjectMapper();
 
     private static final Pattern DOSE = Pattern.compile("(?i)\\b\\d+(?:\\.\\d+)?\\s?(?:mg|mcg|µg|ml|iu|units?|tablets?|pills?|capsules?)\\b");
+    private static final String COND = "(?:heart attack|stroke|cancer|pneumonia|covid(?:-19)?|infection|appendicitis|diabetes"
+            + "|asthma|tumou?r|meningitis|sepsis|embolism|hypertension|migraine|anaemia|anemia|[a-z]+itis|[a-z]+osis"
+            + "|[a-z]+aemia|[a-z]+emia|disease|syndrome|disorder)";
+    // Only an explicit assertion of a named condition counts ("you have pneumonia"); hedged wording such as "can be
+    // associated with" and ordinary phrases like "whether you have other symptoms" are fine.
+    // Questions ("Do you have asthma?") are stripped first, and a negated object ("you have no infection") is skipped.
+    private static final Pattern QUESTION = Pattern.compile("[^.!?\\n]*\\?");
     private static final Pattern DIAGNOSIS = Pattern.compile(
-            "(?i)\\byou (?:definitely |probably |likely |most likely |certainly )?(?:have|are suffering from|are diagnosed with|'ve got)\\s+(?!no\\b|any\\b|a\\s+(?:high|low|fever|cold)\\b)\\w+"
-                    + "|\\b(?:this is|it is|it's) (?:definitely |probably |likely )?(?:a |an )?(?:heart attack|stroke|cancer|pneumonia|covid|infection|appendicitis|diabetes)\\b");
+            "(?i)\\byou (?:definitely |probably |likely |most likely |certainly )?(?:have|are suffering from|are diagnosed with|'ve got)"
+                    + "\\s+(?!(?:no|not|any|without|never|had)\\b)(?:a |an |the )?(?:[a-z-]+ ){0,2}?" + COND + "\\b"
+                    + "|\\b(?:this is|it is|it's) (?:definitely |probably |likely )?(?:a |an )?" + COND + "\\b");
     private static final Pattern PRESCRIBE = Pattern.compile("(?i)\\b(?:i prescribe|take (?:\\d|one|two|an?) |you should take (?:\\w+ )?(?:ibuprofen|paracetamol|aspirin|antibiotic|antibiotics))");
     private static final Pattern REASSURE = Pattern.compile(
             "(?i)\\bno need to (?:see|visit|seek|consult|worry)|\\bnothing to worry|\\bdon'?t need (?:to see|a doctor|medical)|\\bsafe to ignore|\\bdefinitely (?:not serious|fine)|\\bis not serious\\b");
@@ -45,12 +53,22 @@ final class OutputGuard {
     static LlmException bad(String why) { return new LlmException(Kind.BAD_OUTPUT, "Unusable AI output: " + why); }
 
     /** Throws BAD_OUTPUT when free text contains content the product must never present as AI guidance. */
-    static String safeText(String s, int maxLen) {
+    static String safeText(String s, int maxLen) { return safeText(s, maxLen, null); }
+
+    /**
+     * @param groundingSource when not null, a dose is allowed if it appears verbatim in this source text (a record
+     *                        summary may restate "500mg" because the record says so; guidance may never invent one)
+     */
+    static String safeText(String s, int maxLen, String groundingSource) {
         if (s == null) throw bad("missing text");
         String t = s.strip();
         if (t.isEmpty() || t.length() > maxLen) throw bad("text length");
-        if (DOSE.matcher(t).find()) throw bad("dosage");
-        if (DIAGNOSIS.matcher(t).find()) throw bad("diagnosis claim");
+        java.util.regex.Matcher dm = DOSE.matcher(t);
+        String src = groundingSource == null ? null : norm(groundingSource);
+        while (dm.find()) {
+            if (src == null || !src.contains(norm(dm.group()))) throw bad("dosage");
+        }
+        if (DIAGNOSIS.matcher(QUESTION.matcher(t).replaceAll(" ")).find()) throw bad("diagnosis claim");
         if (PRESCRIBE.matcher(t).find()) throw bad("prescription");
         if (REASSURE.matcher(t).find()) throw bad("false reassurance");
         if (t.chars().anyMatch(c -> c < 0x20 && c != '\n' && c != '\t')) throw bad("control characters");

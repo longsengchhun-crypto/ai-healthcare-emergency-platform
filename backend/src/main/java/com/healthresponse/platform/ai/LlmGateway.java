@@ -44,7 +44,7 @@ public class LlmGateway {
                 Duration timeout = Duration.ofSeconds(ai.timeoutSeconds() > 0 ? ai.timeoutSeconds() : 20);
                 int retries = Math.max(0, ai.maxRetries());
                 if (PROVIDER_GEMINI.equals(providerName)) {
-                    c = new GeminiLlmClient(key, blankModel ? "gemini-2.5-flash" : ai.model().trim(), timeout, retries,
+                    c = new GeminiLlmClient(key, blankModel ? "gemini-3.8-flash" : ai.model().trim(), timeout, retries,
                             ai.baseUrl());
                 } else {
                     c = new AnthropicLlmClient(key, blankModel ? "claude-opus-5-5" : ai.model().trim(), timeout,
@@ -53,6 +53,20 @@ public class LlmGateway {
             }
         }
         this.client = c;
+    }
+
+    /**
+     * Calls the model and parses/validates the answer. If the answer is unusable (malformed or rejected by a safety
+     * guard) it asks once more: model wording varies between runs and a second sample usually passes. The retry uses
+     * the same per-user rate limit; if it also fails the caller falls back to the deterministic result.
+     */
+    public <T> T completeParsed(UUID userId, LlmClient.Request request, java.util.function.Function<String, T> parser) {
+        try {
+            return parser.apply(complete(userId, request));
+        } catch (LlmException e) {
+            if (e.kind() != Kind.BAD_OUTPUT) throw e;
+        }
+        return parser.apply(complete(userId, request));
     }
 
     /** Test support: clears rate-limit windows and circuit-breaker state. */

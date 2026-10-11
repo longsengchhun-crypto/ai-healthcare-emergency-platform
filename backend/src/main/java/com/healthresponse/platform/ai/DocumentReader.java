@@ -62,10 +62,9 @@ public class DocumentReader {
     public DocumentReader(LlmGateway gateway) { this.gateway = gateway; }
 
     public Reading read(UUID userId, byte[] bytes, String mediaType) {
-        String raw = gateway.complete(userId, new LlmClient.Request(SYSTEM,
+        return gateway.completeParsed(userId, new LlmClient.Request(SYSTEM,
                 "Extract the structured fields from the attached document.",
-                new LlmClient.Attachment(mediaType, bytes), 4096));
-        return parse(raw);
+                new LlmClient.Attachment(mediaType, bytes), 4096), DocumentReader::parse);
     }
 
     static Reading parse(String raw) {

@@ -161,7 +161,7 @@ public class AiService {
             } catch (LlmException e) {
                 String st = statusFor(e);
                 logStatus = "FB_" + st;
-                LOG.warn("AI triage fell back to rules: {}", st);
+                LOG.warn("AI triage fell back to rules: {} ({})", st, e.getMessage());
                 out = rulesOutcome(det, ruleReasons(det), st);
             }
         }
@@ -270,7 +270,7 @@ public class AiService {
             } catch (LlmException ex) {
                 aiStatus = statusFor(ex);
                 logStatus = "FB_" + aiStatus;
-                LOG.warn("AI summary fell back to rules: {}", aiStatus);
+                LOG.warn("AI summary fell back to rules: {} ({})", aiStatus, ex.getMessage());
             }
         }
 

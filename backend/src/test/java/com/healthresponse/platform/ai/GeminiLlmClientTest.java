@@ -57,7 +57,7 @@ class GeminiLlmClientTest {
     void stop() { server.stop(0); }
 
     GeminiLlmClient client(int retries, int timeoutSeconds) {
-        return new GeminiLlmClient("test-key-not-real", "gemini-2.5-flash", Duration.ofSeconds(timeoutSeconds), retries,
+        return new GeminiLlmClient("test-key-not-real", "gemini-3.8-flash", Duration.ofSeconds(timeoutSeconds), retries,
                 "http://127.0.0.1:" + server.getAddress().getPort());
     }
 
@@ -66,7 +66,7 @@ class GeminiLlmClientTest {
     @Test
     void sendsKeyInHeaderNotUrlAndReturnsText() {
         assertThat(client(0, 5).complete(req())).isEqualTo("{\"ok\":true}");
-        assertThat(lastPath.get()).isEqualTo("/v1beta/models/gemini-2.5-flash:generateContent").doesNotContain("key");
+        assertThat(lastPath.get()).isEqualTo("/v1beta/models/gemini-3.8-flash:generateContent").doesNotContain("key");
         assertThat(lastKey.get()).isEqualTo("test-key-not-real");
         assertThat(lastRequest.get()).contains("systemInstruction").contains("system rules").contains("hello")
                 .contains("\"responseMimeType\":\"application/json\"");
@@ -162,7 +162,7 @@ class GeminiLlmClientTest {
         assertThat(gw.providerName()).isEqualTo("gemini");
         assertThat(gw.providerMayUseDataForTraining()).isTrue();
         gw.complete(java.util.UUID.randomUUID(), req());
-        assertThat(lastPath.get()).contains("gemini-2.5-flash");
+        assertThat(lastPath.get()).contains("gemini-3.8-flash");
 
         AppProperties none = new AppProperties(null, null, null, null,
                 new AppProperties.Ai("gemini", "", "", 5, 0, 10, null), null, null);

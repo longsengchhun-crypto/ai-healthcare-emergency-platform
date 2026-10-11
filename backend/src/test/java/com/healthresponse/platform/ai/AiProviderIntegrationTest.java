@@ -188,10 +188,36 @@ class AiProviderIntegrationTest {
                 "{\"severity\":\"ROUTINE\"}"};
         for (String b : bad) {
             llm.answer(b);
+            gateway.reset();
+            llm.answer(b); // the single controlled re-ask gets the same unusable answer
             JsonNode r = triage(t, "mild runny nose since yesterday", 200);
             assertThat(r.get("aiStatus").asText()).as(b).isEqualTo("OUTPUT_REJECTED");
             assertThat(r.get("assessedBy").asText()).isEqualTo("RULES");
         }
+    }
+
+    @Test
+    void oneUnusableAnswerIsRetriedOnceAndASecondGoodAnswerIsUsed() throws Exception {
+        String t = newPatient();
+        llm.answer("sorry, I cannot produce json");
+        llm.answer(triageJson("ROUTINE"));
+        JsonNode r = triage(t, "mild runny nose since yesterday", 200);
+        assertThat(r.get("aiStatus").asText()).isEqualTo("OK");
+        assertThat(r.get("assessedBy").asText()).isEqualTo("RULES+AI");
+        assertThat(llm.seen).hasSize(2);
+    }
+
+    @Test
+    void grammarThatMerelyContainsYouHaveIsNotMistakenForADiagnosis() {
+        String ok = "Tell us whether you have other symptoms. Do you have a history of asthma? You have no infection signs; you do not have pneumonia.";
+        org.assertj.core.api.Assertions.assertThat(OutputGuard.safeText(ok, 300)).isEqualTo(ok);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> OutputGuard.safeText("You have pneumonia.", 300))
+                .hasMessageContaining("diagnosis");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> OutputGuard.safeText("Take 500 mg now.", 300))
+                .hasMessageContaining("dosage");
+        // a record may restate its own dose, guidance may not invent one
+        org.assertj.core.api.Assertions.assertThat(OutputGuard.safeText("Your record lists metformin 500mg.", 300,
+                "Medication: Metformin 500mg twice daily")).contains("500mg");
     }
 
     @Test

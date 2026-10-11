@@ -23,7 +23,7 @@
 | `SEED_DEMO_DATA`, `SEED_DEMO_PASSWORD` | dev only | fictional demo accounts |
 | `AI_PROVIDER` | no | `deterministic-demo` (default, rules only), `gemini` (free Google key) or `anthropic` (Claude, paid) |
 | `AI_API_KEY` | for gemini/anthropic | Provider API key. Backend secret only - see AI_DOCUMENTATION.md |
-| `AI_MODEL` | no | default `gemini-2.5-flash` / `claude-opus-5-5` |
+| `AI_MODEL` | no | default `gemini-3.8-flash` / `claude-opus-5-5` |
 | `AI_TIMEOUT_SECONDS` / `AI_MAX_RETRIES` / `AI_RATE_LIMIT_PER_MINUTE` | no | 20 / 2 / 10 per user |
 | `DEV_LOG_RESET_TOKENS` | dev only | logs reset tokens; never in production |
 | `PORT` | no | default 8080 |

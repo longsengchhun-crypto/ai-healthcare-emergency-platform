@@ -17,7 +17,8 @@
 | Claim | Status |
 |---|---|
 | Provider code, prompts, validation, fallbacks, redaction, rate limit, circuit breaker | Unit/integration tested (85 backend tests) against a **scripted fake provider** and a **local fake HTTP server** driven through the real Anthropic SDK |
-| Live behaviour with a real API key | **Not verified.** No key was available in development. First live run must be done by you (section 7) |
+| Live behaviour, **Gemini free tier** (`gemini-3.8-flash`, 2026-10-11) | **Verified once, by hand**, through the real backend stack (`LiveProviderSmokeTest`, opt-in via `AI_LIVE_PROVIDER`/`AI_LIVE_KEY`): negated-symptom triage returned `RULES+AI`/`ROUTINE`; an emergency phrase skipped the model; a record summary returned verified facts + a grounded explanation; a small digital PDF lab report was read correctly (5/5 fields). A handful of manual samples, not an evaluation. Photographed/handwritten documents were **not** tried |
+| Live behaviour, Claude (Anthropic) | **Not verified** (no key) |
 | Quality/safety of model-assisted triage on real or labelled cases | **Not evaluated.** The only evaluation numbers are for the deterministic rules (section 3) |
 | OCR accuracy on real documents | **Not measured.** All model-read values are shipped flagged `UNVERIFIED_MODEL_READ` |
 
@@ -29,7 +30,7 @@ reports `provider` and `languageModel`, so the app can say truthfully whether a 
 | Provider | Cost | Default model | Reads PDF/images | Data-use note |
 |---|---|---|---|---|
 | `deterministic-demo` | free | none (rules) | no | nothing leaves the server |
-| `gemini` | **free key** from Google AI Studio (free tier has quota limits) | `gemini-2.5-flash` | yes | **Free tier: Google's pricing page marks all free-tier models "Used to improve our products: Yes".** Use fictional/demo data only |
+| `gemini` | **free key** from Google AI Studio (free tier has quota limits) | `gemini-3.8-flash` | yes | **Free tier: Google's pricing page marks all free-tier models "Used to improve our products: Yes".** Use fictional/demo data only |
 | `anthropic` | paid API credit (a Claude Pro chat plan does not include API access) | `claude-opus-5-5` | yes | see Anthropic's API terms |
 
 Because the free Gemini tier may train on submitted content, the app (a) shows a notice on the triage tab, (b) asks for
@@ -203,7 +204,7 @@ the prompt (prompt-injection resistance is a mitigation, not a guarantee - the o
 |---|---|---|
 | `AI_PROVIDER` | `deterministic-demo` (`render.yaml`: `gemini`) | `deterministic-demo`, `gemini` or `anthropic` |
 | `AI_API_KEY` | empty | Provider API key (secret; Render → Environment) |
-| `AI_MODEL` | provider default | `gemini-2.5-flash` / `claude-opus-5-5`; any model id the provider accepts |
+| `AI_MODEL` | provider default | `gemini-3.8-flash` / `claude-opus-5-5`; any model id the provider accepts |
 | `AI_TIMEOUT_SECONDS` | 20 | per attempt |
 | `AI_MAX_RETRIES` | 2 | SDK retries |
 | `AI_RATE_LIMIT_PER_MINUTE` | 10 | per user, across all AI features |
