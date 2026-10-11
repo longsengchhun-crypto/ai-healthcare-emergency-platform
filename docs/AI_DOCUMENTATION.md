@@ -24,6 +24,23 @@
 With `AI_PROVIDER=deterministic-demo` (the default) no language model runs and no data leaves the server. Every response
 reports `provider` and `languageModel`, so the app can say truthfully whether a model contributed.
 
+## 0.1 Providers (choose one with `AI_PROVIDER`)
+
+| Provider | Cost | Default model | Reads PDF/images | Data-use note |
+|---|---|---|---|---|
+| `deterministic-demo` | free | none (rules) | no | nothing leaves the server |
+| `gemini` | **free key** from Google AI Studio (free tier has quota limits) | `gemini-2.5-flash` | yes | **Free tier: Google's pricing page marks all free-tier models "Used to improve our products: Yes".** Use fictional/demo data only |
+| `anthropic` | paid API credit (a Claude Pro chat plan does not include API access) | `claude-opus-5-5` | yes | see Anthropic's API terms |
+
+Because the free Gemini tier may train on submitted content, the app (a) shows a notice on the triage tab, (b) asks for
+explicit consent before every summary and every document upload, naming the provider, and (c) exposes
+`GET /api/v1/ai/status` (provider name, `providerMayUseDataForTraining`; never the key). The backend itself refuses to
+send records for a summary without `externalProcessingConsent=true`.
+
+The Gemini client talks to `POST /v1beta/models/{model}:generateContent` with the key in the `x-goog-api-key` header.
+It has been tested only against a local fake server (request shape, error mapping, retry, timeout); the live Google
+API has **not** been called.
+
 ## 1. Architecture
 
 ```
@@ -184,9 +201,9 @@ the prompt (prompt-injection resistance is a mitigation, not a guarantee - the o
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `AI_PROVIDER` | `deterministic-demo` (`render.yaml`: `anthropic`) | `deterministic-demo` or `anthropic` |
-| `AI_API_KEY` | empty | Claude API key (secret; Render → Environment) |
-| `AI_MODEL` | `claude-opus-5-5` | any Messages-API model id; cheaper ids (e.g. `claude-haiku-5-5`) work for this prompt size |
+| `AI_PROVIDER` | `deterministic-demo` (`render.yaml`: `gemini`) | `deterministic-demo`, `gemini` or `anthropic` |
+| `AI_API_KEY` | empty | Provider API key (secret; Render → Environment) |
+| `AI_MODEL` | provider default | `gemini-2.5-flash` / `claude-opus-5-5`; any model id the provider accepts |
 | `AI_TIMEOUT_SECONDS` | 20 | per attempt |
 | `AI_MAX_RETRIES` | 2 | SDK retries |
 | `AI_RATE_LIMIT_PER_MINUTE` | 10 | per user, across all AI features |

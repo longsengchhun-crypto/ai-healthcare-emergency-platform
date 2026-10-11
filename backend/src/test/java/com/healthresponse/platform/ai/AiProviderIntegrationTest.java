@@ -232,7 +232,7 @@ class AiProviderIntegrationTest {
                  "overview":"Your record lists a shellfish allergy and metformin.",
                  "missingInformation":["No blood pressure readings are recorded."],
                  "questionsForClinician":["Is the dizziness related to my medicine?"]}""");
-        JsonNode s = send(post("/api/v1/ai/medical-summary"), t, Map.of(), 200);
+        JsonNode s = send(post("/api/v1/ai/medical-summary"), t, Map.of("externalProcessingConsent", true), 200);
         assertThat(s.get("languageModel").asBoolean()).isTrue();
         assertThat(s.get("aiStatus").asText()).isEqualTo("OK");
         assertThat(s.get("aiExplanation").asText()).contains("shellfish");
@@ -263,7 +263,7 @@ class AiProviderIntegrationTest {
                 {"facts":[{"category":"ALLERGY","value":"shellfish","recordRef":"R1","quote":"Allergy: shellfish"}],
                  "overview":"You have a shellfish allergy and your last HbA1c was 9.4.",
                  "missingInformation":[],"questionsForClinician":[]}""");
-        JsonNode s = send(post("/api/v1/ai/medical-summary"), t, Map.of(), 200);
+        JsonNode s = send(post("/api/v1/ai/medical-summary"), t, Map.of("externalProcessingConsent", true), 200);
         assertThat(s.get("aiStatus").asText()).isEqualTo("FACTS_ONLY");
         assertThat(s.path("aiExplanation").isMissingNode() || s.path("aiExplanation").isNull()).isTrue();
         assertThat(s.get("allergies").toString()).contains("shellfish");
@@ -275,7 +275,7 @@ class AiProviderIntegrationTest {
         send(post("/api/v1/medical-records"), t, Map.of("recordType", "HISTORY", "title", "Hx",
                 "body", "Allergy: shellfish\nMedication: Metformin 500mg"), 201);
         llm.fail(Kind.UNAVAILABLE);
-        JsonNode s = send(post("/api/v1/ai/medical-summary"), t, Map.of(), 200);
+        JsonNode s = send(post("/api/v1/ai/medical-summary"), t, Map.of("externalProcessingConsent", true), 200);
         assertThat(s.get("aiStatus").asText()).isEqualTo("UNAVAILABLE");
         assertThat(s.get("languageModel").asBoolean()).isFalse();
         assertThat(s.get("allergies").toString()).contains("shellfish");
@@ -284,9 +284,31 @@ class AiProviderIntegrationTest {
     }
 
     @Test
+    void summaryWithoutConsentNeverSendsRecordsToTheProvider() throws Exception {
+        String t = newPatient();
+        send(post("/api/v1/medical-records"), t, Map.of("recordType", "HISTORY", "title", "Hx",
+                "body", "Allergy: shellfish"), 201);
+        JsonNode s = send(post("/api/v1/ai/medical-summary"), t, Map.of(), 200);
+        assertThat(s.get("aiStatus").asText()).isEqualTo("CONSENT_REQUIRED");
+        assertThat(s.get("languageModel").asBoolean()).isFalse();
+        assertThat(s.get("allergies").toString()).contains("shellfish");
+        assertThat(llm.seen).isEmpty();
+    }
+
+    @Test
+    void statusEndpointReportsProviderWithoutLeakingAnyKey() throws Exception {
+        String t = newPatient();
+        JsonNode st = send(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/ai/status"),
+                t, null, 200);
+        assertThat(st.get("configured").asBoolean()).isTrue();
+        assertThat(st.get("provider").asText()).isEqualTo("anthropic");
+        assertThat(st.toString().toLowerCase()).doesNotContain("key\":\"").doesNotContain("sk-");
+    }
+
+    @Test
     void summaryWithNoRecordsNeverCallsTheModel() throws Exception {
         String t = newPatient();
-        JsonNode s = send(post("/api/v1/ai/medical-summary"), t, Map.of(), 200);
+        JsonNode s = send(post("/api/v1/ai/medical-summary"), t, Map.of("externalProcessingConsent", true), 200);
         assertThat(s.get("summary").asText()).contains("No medical records");
         assertThat(llm.seen).isEmpty();
     }

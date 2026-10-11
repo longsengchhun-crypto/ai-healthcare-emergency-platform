@@ -33,7 +33,7 @@ services:
       SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-}
       AI_PROVIDER: ${AI_PROVIDER:-deterministic-demo}
       AI_API_KEY: ${AI_API_KEY:-}
-      AI_MODEL: ${AI_MODEL:-claude-opus-5-5}
+      AI_MODEL: ${AI_MODEL:-}
       DEV_LOG_RESET_TOKENS: ${DEV_LOG_RESET_TOKENS:-false}
       RATE_LIMIT_AUTH_PER_MINUTE: ${RATE_LIMIT_AUTH_PER_MINUTE:-10}
       FORWARD_HEADERS: ${FORWARD_HEADERS:-none}

@@ -52,6 +52,48 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   }
 }
 
+Future<Map<String, dynamic>?> _aiStatus(WidgetRef ref) async {
+  try {
+    final r = await ref.read(apiClientProvider).get('/ai/status');
+    return Map<String, dynamic>.from(r as Map);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Explicit, provider-specific consent before health data leaves the server.
+Future<bool> _confirmExternal(
+  BuildContext context,
+  Map<String, dynamic>? st, {
+  required String what,
+}) async {
+  final name = (st?['displayName'] as String?) ?? 'an external AI service';
+  final trains = st?['providerMayUseDataForTraining'] == true;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (c) => AlertDialog(
+      title: Text(c.t('ផ្ញើទៅសេវា AI?', 'Send to an AI service?')),
+      content: Text(
+        c.t(
+          '$what នឹងត្រូវផ្ញើទៅ $name ដើម្បីដំណើរការ។ ${trains ? 'កំណែឥតគិតថ្លៃរបស់ក្រុមហ៊ុននេះអាចប្រើមាតិកាដើម្បីកែលម្អផលិតផលរបស់ពួកគេ។ កុំផ្ញើព័ត៌មានពិតរបស់អ្នកជំងឺ។ ' : ''}តម្លៃដែលអានមិនទាន់ត្រូវបានផ្ទៀងផ្ទាត់ទេ។',
+          '$what will be sent to $name to be processed. ${trains ? 'On the free tier the provider may use submitted content to improve its products, so do NOT send real patient information. ' : ''}Results are not verified - always check them against the original.',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(c, false),
+          child: Text(c.t('បោះបង់', 'Cancel')),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(c, true),
+          child: Text(c.t('យល់ព្រម និងផ្ញើ', 'I agree, send it')),
+        ),
+      ],
+    ),
+  );
+  return ok == true;
+}
+
 /// Titled bullet list; renders nothing for a missing/empty list (older servers do not send these fields).
 Widget _bullets(BuildContext context, String title, List<dynamic>? items) {
   if (items == null || items.isEmpty) return const SizedBox.shrink();
@@ -113,6 +155,17 @@ class _TriageTabState extends ConsumerState<_TriageTab> {
   Map<String, dynamic>? _result;
   Object? _error;
   bool _busy = false;
+  bool _providerTrains = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _aiStatus(ref).then((st) {
+      if (mounted && st != null) {
+        setState(() => _providerTrains = st['providerMayUseDataForTraining'] == true);
+      }
+    });
+  }
 
   Future<void> _run() async {
     if (_text.text.trim().isEmpty) return;
@@ -153,6 +206,16 @@ class _TriageTabState extends ConsumerState<_TriageTab> {
           ),
           tone: Tone.amber,
         ),
+        if (_providerTrains) ...[
+          const SizedBox(height: Gap.sm),
+          Notice(
+            context.t(
+              'សេវា AI ឥតគិតថ្លៃអាចប្រើអត្ថបទដែលអ្នកវាយដើម្បីកែលម្អផលិតផលរបស់ខ្លួន។ កុំបញ្ចូលឈ្មោះ ឬព័ត៌មានផ្ទាល់ខ្លួន។',
+              'The free AI service may use the text you type to improve its products. Do not enter names or personal details.',
+            ),
+            tone: Tone.amber,
+          ),
+        ],
         const SizedBox(height: Gap.lg),
         TextField(
           controller: _text,
@@ -284,6 +347,18 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
   bool _busy = false;
 
   Future<void> _run() async {
+    final st = await _aiStatus(ref);
+    var consent = false;
+    if (st != null && st['configured'] == true) {
+      if (!mounted) return;
+      consent = await _confirmExternal(
+        context,
+        st,
+        what: context.t('កំណត់ត្រាវេជ្ជសាស្ត្ររបស់អ្នក', 'Your medical records'),
+      );
+      if (!mounted) return;
+      if (!consent) return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -291,7 +366,10 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
     try {
       final res = await ref
           .read(apiClientProvider)
-          .post('/ai/medical-summary', body: {});
+          .post(
+            '/ai/medical-summary',
+            body: {'externalProcessingConsent': consent},
+          );
       setState(() => _result = Map<String, dynamic>.from(res as Map));
     } on AppException catch (e) {
       setState(() => _error = e);
@@ -449,29 +527,14 @@ class _ExtractTabState extends ConsumerState<_ExtractTab> {
     final isText = file.name.toLowerCase().endsWith('.txt');
     if (!isText) {
       // PDFs/images are read by an external AI service: explicit consent first.
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (c) => AlertDialog(
-          title: Text(c.t('ផ្ញើទៅសេវា AI?', 'Send to an AI service?')),
-          content: Text(
-            c.t(
-              'ឯកសារទាំងមូល រួមទាំងឈ្មោះ និងលេខសម្គាល់ដែលមាននៅលើវា នឹងត្រូវផ្ញើទៅសេវា AI ខាងក្រៅ (Anthropic) ដើម្បីអាន។ តម្លៃដែលអានមិនទាន់ត្រូវបានផ្ទៀងផ្ទាត់ទេ។',
-              'The whole document, including any names and ID numbers on it, will be sent to an external AI service (Anthropic) to be read. The values it reads are not verified - always check them against the original.',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(c, false),
-              child: Text(c.t('បោះបង់', 'Cancel')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(c, true),
-              child: Text(c.t('យល់ព្រម និងផ្ញើ', 'I agree, send it')),
-            ),
-          ],
-        ),
+      final st = await _aiStatus(ref);
+      if (!mounted) return;
+      final ok = await _confirmExternal(
+        context,
+        st,
+        what: context.t('ឯកសារទាំងមូល', 'The whole document'),
       );
-      if (ok != true) return;
+      if (!ok) return;
     }
     setState(() {
       _busy = true;

@@ -18,16 +18,30 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/v1/ai")
 @PreAuthorize("hasAuthority('AI_USE')")
 public class AiController {
-    public record SummaryRequest(UUID patientId) {}
+    public record SummaryRequest(UUID patientId, Boolean externalProcessingConsent) {}
+    public record AiStatus(String provider, String displayName, boolean configured, boolean externalRequested,
+                           boolean providerMayUseDataForTraining) {}
     public record TriageRequest(@NotBlank @Size(max = 2000) String symptoms) {}
 
     private final AiService service;
+    private final LlmGateway gateway;
 
-    public AiController(AiService service) { this.service = service; }
+    public AiController(AiService service, LlmGateway gateway) {
+        this.service = service;
+        this.gateway = gateway;
+    }
+
+    /** What the app needs to show an honest consent text; never includes the key. */
+    @GetMapping("/status")
+    public AiStatus status() {
+        return new AiStatus(gateway.providerName(), gateway.displayName(), gateway.configured(),
+                gateway.externalRequested(), gateway.configured() && gateway.providerMayUseDataForTraining());
+    }
 
     @PostMapping("/medical-summary")
     public SummaryResult summary(@AuthenticationPrincipal AuthPrincipal p, @RequestBody(required = false) SummaryRequest r) {
-        return service.summarize(p, r == null ? null : r.patientId());
+        return service.summarize(p, r == null ? null : r.patientId(),
+                r != null && Boolean.TRUE.equals(r.externalProcessingConsent()));
     }
 
     @PostMapping(value = "/document-extraction", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

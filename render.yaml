@@ -28,14 +28,16 @@ services:
         value: "30"
       - key: FORWARD_HEADERS
         value: framework # Render's proxy sets X-Forwarded-For
-      # AI: deterministic-demo = rules only (no data leaves the server). anthropic = Claude on top of the rules; it also
-      # needs AI_API_KEY (paste it in the Render dashboard, never in git). Without the key the app keeps working on rules.
+      # AI: deterministic-demo = rules only (no data leaves the server). gemini = Google Gemini (FREE key from Google AI
+      # Studio; free tier may use submitted content to improve Google products - demo/fictional data only).
+      # anthropic = Claude (paid key). Both run on top of the safety rules and need AI_API_KEY, pasted in the Render
+      # dashboard, never in git. Without the key the app keeps working on rules.
       - key: AI_PROVIDER
-        value: anthropic
+        value: gemini
       - key: AI_API_KEY
         sync: false
       - key: AI_MODEL
-        value: claude-opus-5-5
+        value: gemini-2.5-flash
       - key: AI_TIMEOUT_SECONDS
         value: "20"
       - key: AI_MAX_RETRIES

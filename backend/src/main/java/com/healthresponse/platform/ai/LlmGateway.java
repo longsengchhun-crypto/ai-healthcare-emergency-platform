@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class LlmGateway {
     public static final String PROVIDER_ANTHROPIC = "anthropic";
+    public static final String PROVIDER_GEMINI = "gemini";
     private static final int BREAKER_THRESHOLD = 5;
     private static final long BREAKER_OPEN_MS = 60_000;
 
@@ -35,13 +36,20 @@ public class LlmGateway {
         this.providerName = ai.provider();
         this.perMinute = ai.rateLimitPerMinute() > 0 ? ai.rateLimitPerMinute() : 10;
         LlmClient c = null;
-        if (PROVIDER_ANTHROPIC.equals(providerName)) {
+        if (externalRequested()) {
             c = injected.getIfAvailable();
             if (c == null && ai.apiKey() != null && !ai.apiKey().isBlank()) {
-                c = new AnthropicLlmClient(ai.apiKey().trim(),
-                        ai.model() == null || ai.model().isBlank() ? "claude-opus-5-5" : ai.model().trim(),
-                        Duration.ofSeconds(ai.timeoutSeconds() > 0 ? ai.timeoutSeconds() : 20),
-                        Math.max(0, ai.maxRetries()), ai.baseUrl());
+                String key = ai.apiKey().trim();
+                boolean blankModel = ai.model() == null || ai.model().isBlank();
+                Duration timeout = Duration.ofSeconds(ai.timeoutSeconds() > 0 ? ai.timeoutSeconds() : 20);
+                int retries = Math.max(0, ai.maxRetries());
+                if (PROVIDER_GEMINI.equals(providerName)) {
+                    c = new GeminiLlmClient(key, blankModel ? "gemini-2.5-flash" : ai.model().trim(), timeout, retries,
+                            ai.baseUrl());
+                } else {
+                    c = new AnthropicLlmClient(key, blankModel ? "claude-opus-5-5" : ai.model().trim(), timeout,
+                            retries, ai.baseUrl());
+                }
             }
         }
         this.client = c;
@@ -60,9 +68,20 @@ public class LlmGateway {
     public boolean configured() { return client != null; }
 
     /** True when an external provider was requested (even if its credential is missing). */
-    public boolean externalRequested() { return PROVIDER_ANTHROPIC.equals(providerName); }
+    public boolean externalRequested() {
+        return PROVIDER_ANTHROPIC.equals(providerName) || PROVIDER_GEMINI.equals(providerName);
+    }
 
-    public String providerName() { return configured() ? PROVIDER_ANTHROPIC : "deterministic-demo"; }
+    /** Name of the provider actually answering requests ("deterministic-demo" when no model is available). */
+    public String providerName() { return configured() ? providerName : "deterministic-demo"; }
+
+    public String displayName() { return PROVIDER_GEMINI.equals(providerName) ? "Gemini" : "Claude"; }
+
+    /**
+     * True for the free Gemini tier, whose terms allow submitted content to be used to improve the provider's
+     * products (https://ai.google.dev/gemini-api/docs/pricing). Callers must obtain consent before sending records.
+     */
+    public boolean providerMayUseDataForTraining() { return PROVIDER_GEMINI.equals(providerName); }
 
     public String complete(UUID userId, LlmClient.Request request) {
         if (client == null) throw new LlmException(Kind.NOT_CONFIGURED, "AI provider is not configured");
