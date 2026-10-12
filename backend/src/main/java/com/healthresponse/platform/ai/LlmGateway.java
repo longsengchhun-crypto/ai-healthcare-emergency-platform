@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
 public class LlmGateway {
     public static final String PROVIDER_ANTHROPIC = "anthropic";
     public static final String PROVIDER_GEMINI = "gemini";
-    private static final int BREAKER_THRESHOLD = 5;
+    private static final int BREAKER_THRESHOLD = 3;
     private static final long BREAKER_OPEN_MS = 60_000;
 
     private final LlmClient client;

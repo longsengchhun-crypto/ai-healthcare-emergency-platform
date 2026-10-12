@@ -147,11 +147,11 @@ class AnthropicLlmClientTest {
                 new AppProperties.Ai("anthropic", "", "m", 5, 0, 100, null), null, null);
         LlmGateway gw = new LlmGateway(props, bf.getBeanProvider(LlmClient.class));
         java.util.UUID u = java.util.UUID.randomUUID();
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 3; i++) {
             assertThatThrownBy(() -> gw.complete(u, req())).isInstanceOf(LlmException.class);
         }
         assertThatThrownBy(() -> gw.complete(u, req()))
                 .isInstanceOfSatisfying(LlmException.class, e -> assertThat(e.kind()).isEqualTo(Kind.CIRCUIT_OPEN));
-        assertThat(calls.get()).isEqualTo(5);
+        assertThat(calls.get()).isEqualTo(3);
     }
 }

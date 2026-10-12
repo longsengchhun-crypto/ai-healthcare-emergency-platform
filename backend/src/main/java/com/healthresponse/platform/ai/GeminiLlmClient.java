@@ -63,20 +63,25 @@ public class GeminiLlmClient implements LlmClient {
         String payload = buildBody(r);
         LlmException last = null;
         long now = System.currentTimeMillis();
+        // `timeout` is the budget for the WHOLE call (all models and retries): a user waiting on a spinner is
+        // better served by the rule-based fallback after a few seconds than by a perfect answer after a minute.
+        long deadline = now + timeout.toMillis();
         for (String model : models) {
+            if (System.currentTimeMillis() >= deadline) break;
             Long until = blockedUntil.get(model);
             if (until != null && until > now) {
                 if (last == null) last = new LlmException(Kind.RATE_LIMITED, "AI provider quota reached");
                 continue;
             }
             try {
-                return callModel(model, payload);
+                return callModel(model, payload, deadline);
             } catch (ModelUnusable e) {
                 blockedUntil.put(model, System.currentTimeMillis() + e.blockMs);
                 last = e;
                 LOG.warn("AI provider (gemini) model skipped for {} s", e.blockMs / 1000);
             }
         }
+        if (last == null && System.currentTimeMillis() >= deadline) last = new LlmException(Kind.TIMEOUT, "AI provider timed out");
         throw last != null ? last : new LlmException(Kind.UNAVAILABLE, "No AI model configured");
     }
 
@@ -90,10 +95,12 @@ public class GeminiLlmClient implements LlmClient {
         }
     }
 
-    private String callModel(String model, String payload) {
+    private String callModel(String model, String payload, long deadline) {
         URI uri = URI.create(baseUrl + "/v1beta/models/" + model + ":generateContent");
         LlmException last = new LlmException(Kind.UNAVAILABLE, "AI provider call failed");
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            long left = deadline - System.currentTimeMillis();
+            if (left < 200) break;
             if (attempt > 0) {
                 try {
                     Thread.sleep(400L * (1L << (attempt - 1)));
@@ -103,7 +110,7 @@ public class GeminiLlmClient implements LlmClient {
                 }
             }
             try {
-                HttpRequest req = HttpRequest.newBuilder(uri).timeout(timeout)
+                HttpRequest req = HttpRequest.newBuilder(uri).timeout(Duration.ofMillis(Math.max(200, deadline - System.currentTimeMillis())))
                         .header("content-type", "application/json")
                         .header("x-goog-api-key", apiKey)
                         .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8)).build();
