@@ -137,7 +137,7 @@ class _AiBadge extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Pill(label, tone: ai ? Tone.teal : (unavailable ? Tone.amber : Tone.neutral)),
+        child: Pill(label, tone: ai ? Tone.brand : (unavailable ? Tone.amber : Tone.neutral)),
       ),
     );
   }
@@ -393,7 +393,7 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: p.teal),
+              Icon(icon, size: 18, color: p.brand),
               const SizedBox(width: 8),
               Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
             ],
@@ -421,7 +421,7 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
             'សង្ខេបតែអ្វីដែលមានក្នុងកំណត់ត្រារបស់អ្នក។ វាអាចមិនពេញលេញ ហើយមិនមែនជាដំបូន្មានវេជ្ជសាស្ត្រទេ។',
             'Summarises only what appears in your records. It may be incomplete and is not medical advice.',
           ),
-          tone: Tone.teal,
+          tone: Tone.brand,
         ),
         const SizedBox(height: Gap.lg),
         PrimaryButton(
@@ -632,7 +632,7 @@ class _ExtractTabState extends ConsumerState<_ExtractTab> {
                               : '${((f['confidence'] as num) * 100).round()}%',
                           tone: f['needsReview'] == true
                               ? Tone.amber
-                              : Tone.teal,
+                              : Tone.brand,
                         ),
                         if (f['needsReview'] == true)
                           Padding(

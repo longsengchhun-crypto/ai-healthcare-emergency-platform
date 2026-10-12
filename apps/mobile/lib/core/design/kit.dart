@@ -50,7 +50,24 @@ class _TapState extends State<Tap> {
   }
 }
 
-/// Flat surface with a hairline, the product's basic container (no shadows, no gradient fills).
+/// Soft, low-contrast lift used by cards and the bottom bar. Dark theme relies on borders instead of shadows.
+List<BoxShadow> softShadow(BuildContext context, {double strength = 1}) {
+  if (Theme.of(context).brightness == Brightness.dark) return const [];
+  return [
+    BoxShadow(
+      color: Color.fromRGBO(30, 58, 138, 0.07 * strength),
+      blurRadius: 26,
+      offset: const Offset(0, 10),
+    ),
+    BoxShadow(
+      color: Color.fromRGBO(30, 58, 138, 0.04 * strength),
+      blurRadius: 4,
+      offset: const Offset(0, 1),
+    ),
+  ];
+}
+
+/// The product's basic container: white card, large radius, soft lift (hairline border in dark mode).
 class Surface extends StatelessWidget {
   const Surface({
     super.key,
@@ -71,6 +88,7 @@ class Surface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = Palette.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Tap(
       onTap: onTap,
       radius: radius,
@@ -79,7 +97,10 @@ class Surface extends StatelessWidget {
         decoration: BoxDecoration(
           color: color ?? p.surface,
           borderRadius: BorderRadius.circular(radius),
-          border: Border.all(color: borderColor ?? p.line),
+          border: borderColor != null || dark
+              ? Border.all(color: borderColor ?? p.line)
+              : null,
+          boxShadow: borderColor != null ? null : softShadow(context),
         ),
         child: child,
       ),
@@ -114,7 +135,7 @@ class SectionHeader extends StatelessWidget {
             title,
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               color: p.ink,
               height: 1.4,
             ),
@@ -134,7 +155,11 @@ class SectionHeader extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Text(
                   action!,
-                  style: TextStyle(color: p.teal, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: p.brand,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ),
@@ -145,7 +170,7 @@ class SectionHeader extends StatelessWidget {
 }
 
 /// Small label. `tone` picks a semantic colour pair.
-enum Tone { neutral, teal, blue, green, amber, red }
+enum Tone { neutral, brand, blue, green, amber, red }
 
 class Pill extends StatelessWidget {
   const Pill(this.label, {super.key, this.tone = Tone.neutral, this.icon});
@@ -157,7 +182,7 @@ class Pill extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = Palette.of(context);
     final (bg, fg) = switch (tone) {
-      Tone.teal => (p.tealSoft, p.tealDeep),
+      Tone.brand => (p.brandSoft, p.brandDeep),
       Tone.blue => (p.blue.withValues(alpha: 0.12), p.blue),
       Tone.green => (p.greenSoft, p.green),
       Tone.amber => (p.amberSoft, p.amber),
@@ -215,9 +240,8 @@ class PrimaryButton extends StatelessWidget {
     final p = Palette.of(context);
     final disabled = onPressed == null && !busy;
     final tappable = onPressed != null && !busy;
-    // Ink is near-white in dark mode, so the label must use the page colour (dark) there: contrast in BOTH themes.
-    final fill = disabled ? p.line : (danger ? p.red : p.ink);
-    final fg = disabled ? p.muted : (danger ? Colors.white : p.paper);
+    final fill = disabled ? p.line : (danger ? p.red : p.brand);
+    final fg = disabled ? p.muted : Colors.white;
     return Semantics(
       button: true,
       enabled: tappable,
@@ -225,11 +249,20 @@ class PrimaryButton extends StatelessWidget {
       child: Tap(
         onTap: tappable ? onPressed : null,
         child: Container(
-          height: 54,
+          height: 56,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: fill,
-            borderRadius: BorderRadius.circular(Radii.md),
+            borderRadius: BorderRadius.circular(Radii.pill),
+            boxShadow: disabled
+                ? null
+                : [
+                    BoxShadow(
+                      color: fill.withValues(alpha: 0.32),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
           ),
           child: busy
               ? SizedBox(
@@ -248,7 +281,7 @@ class PrimaryButton extends StatelessWidget {
                       label,
                       style: TextStyle(
                         color: fg,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         fontSize: 16,
                         height: 1.4,
                       ),
@@ -280,18 +313,18 @@ class GhostButton extends StatelessWidget {
     return Tap(
       onTap: onPressed,
       child: Container(
-        height: compact ? 42 : 52,
-        padding: const EdgeInsets.symmetric(horizontal: 18),
+        height: compact ? 42 : 54,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(Radii.md),
-          border: Border.all(color: p.line, width: 1.5),
+          color: p.brandSoft,
+          borderRadius: BorderRadius.circular(Radii.pill),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 18, color: p.ink),
+              Icon(icon, size: 18, color: p.brandDeep),
               const SizedBox(width: 8),
             ],
             Flexible(
@@ -299,8 +332,8 @@ class GhostButton extends StatelessWidget {
                 label,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: p.ink,
-                  fontWeight: FontWeight.w700,
+                  color: p.brandDeep,
+                  fontWeight: FontWeight.w600,
                   fontSize: compact ? 14 : 15,
                   height: 1.4,
                 ),
@@ -563,7 +596,7 @@ class EmptyState extends StatelessWidget {
               width: 132,
               height: 132,
               child: CustomPaint(
-                painter: _ArtPainter(art, p.ink, p.teal, p.tealSoft),
+                painter: _ArtPainter(art, p.ink, p.brand, p.brandSoft),
               ),
             ),
             const SizedBox(height: Gap.lg),
@@ -638,7 +671,7 @@ class Notice extends StatelessWidget {
       Tone.red => (p.redSoft, p.red, Icons.error_outline_rounded),
       Tone.amber => (p.amberSoft, p.amber, Icons.info_outline_rounded),
       Tone.green => (p.greenSoft, p.green, Icons.check_circle_outline_rounded),
-      Tone.teal => (p.tealSoft, p.tealDeep, Icons.info_outline_rounded),
+      Tone.brand => (p.brandSoft, p.brandDeep, Icons.info_outline_rounded),
       _ => (p.sand, p.inkSoft, Icons.info_outline_rounded),
     };
     return Container(
@@ -686,29 +719,38 @@ class InfoRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: value == null
+              ? CrossAxisAlignment.center
+              : CrossAxisAlignment.start,
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: p.tealSoft,
-                borderRadius: BorderRadius.circular(12),
+                color: p.brandSoft,
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, size: 19, color: p.tealDeep),
+              child: Icon(icon, size: 20, color: p.brand),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
-                      color: p.muted,
-                      fontSize: 12.5,
-                      height: 1.4,
-                    ),
+                    style: value == null
+                        ? TextStyle(
+                            color: p.ink,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
+                          )
+                        : TextStyle(
+                            color: p.muted,
+                            fontSize: 12.5,
+                            height: 1.4,
+                          ),
                   ),
                   if (value != null)
                     Text(
@@ -759,7 +801,7 @@ class ArtImage extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(painter: _ArtPainter(art, p.ink, p.teal, p.tealSoft)),
+      child: CustomPaint(painter: _ArtPainter(art, p.ink, p.brand, p.brandSoft)),
     );
   }
 }

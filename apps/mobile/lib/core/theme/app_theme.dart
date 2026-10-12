@@ -5,19 +5,22 @@ import '../design/palette.dart';
 /// Legacy constants kept for screens that still reference them; new code uses [Palette].
 class AppColors {
   AppColors._();
-  static const navy = Color(0xFF0D1B2A);
-  static const teal = Color(0xFF0F7C80);
-  static const blue = Color(0xFF2F5FD0);
-  static const emergency = Color(0xFFD92D20);
-  static const surface = Color(0xFFFAF8F4);
-  static const warning = Color(0xFFA9650F);
-  static const success = Color(0xFF1E7A4F);
+  static const navy = Color(0xFF111B33);
+  static const brand = Color(0xFF2563EB);
+  static const blue = Color(0xFF2563EB);
+  static const emergency = Color(0xFFE5392B);
+  static const surface = Color(0xFFF4F7FC);
+  static const warning = Color(0xFFB86A07);
+  static const success = Color(0xFF16915F);
 }
 
 class AppTheme {
   AppTheme._();
 
-  static const _family = 'NotoSansKhmer';
+  // Latin text uses Plus Jakarta Sans; Khmer glyphs fall through to Noto Sans Khmer (it has no Latin of its own
+  // worth using and Jakarta has no Khmer), so mixed strings render in one consistent weight.
+  static const _family = 'PlusJakartaSans';
+  static const _fallback = ['NotoSansKhmer'];
 
   static ThemeData light() => _build(Palette.light, Brightness.light);
   static ThemeData dark() => _build(Palette.dark, Brightness.dark);
@@ -25,9 +28,9 @@ class AppTheme {
   static ThemeData _build(Palette p, Brightness b) {
     final scheme = ColorScheme(
       brightness: b,
-      primary: p.ink,
-      onPrimary: b == Brightness.light ? Colors.white : p.paper,
-      secondary: p.teal,
+      primary: p.brand,
+      onPrimary: Colors.white,
+      secondary: p.brandDeep,
       onSecondary: Colors.white,
       error: p.red,
       onError: Colors.white,
@@ -41,6 +44,7 @@ class AppTheme {
     TextStyle s(double size, FontWeight w, {double h = 1.5, double ls = 0}) =>
         TextStyle(
           fontFamily: _family,
+          fontFamilyFallback: _fallback,
           fontSize: size,
           fontWeight: w,
           height: h,
@@ -70,6 +74,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       fontFamily: _family,
+      fontFamilyFallback: _fallback,
       brightness: b,
       colorScheme: scheme,
       scaffoldBackgroundColor: p.paper,
@@ -98,13 +103,13 @@ class AppTheme {
         hintStyle: TextStyle(color: p.muted),
         border: border(p.line),
         enabledBorder: border(p.line),
-        focusedBorder: border(p.teal, 1.8),
+        focusedBorder: border(p.brand, 1.8),
         errorBorder: border(p.red),
         focusedErrorBorder: border(p.red, 1.8),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: p.surface,
-        selectedColor: p.ink,
+        selectedColor: p.brand,
         side: BorderSide(color: p.line),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Radii.pill),
@@ -113,6 +118,7 @@ class AppTheme {
           color: p.ink,
           fontWeight: FontWeight.w600,
           fontFamily: _family,
+          fontFamilyFallback: _fallback,
         ),
         showCheckmark: false,
       ),
@@ -121,14 +127,14 @@ class AppTheme {
           (st) => st.contains(WidgetState.selected) ? Colors.white : p.muted,
         ),
         trackColor: WidgetStateProperty.resolveWith(
-          (st) => st.contains(WidgetState.selected) ? p.teal : p.line,
+          (st) => st.contains(WidgetState.selected) ? p.brand : p.line,
         ),
         trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
       ),
       tabBarTheme: TabBarThemeData(
         labelColor: p.ink,
         unselectedLabelColor: p.muted,
-        indicatorColor: p.teal,
+        indicatorColor: p.brand,
         indicatorSize: TabBarIndicatorSize.label,
         dividerColor: p.line,
         labelStyle: s(15, FontWeight.w800, h: 1.4),
@@ -140,6 +146,7 @@ class AppTheme {
         contentTextStyle: TextStyle(
           color: p.paper,
           fontFamily: _family,
+          fontFamilyFallback: _fallback,
           height: 1.4,
         ),
         shape: RoundedRectangleBorder(
@@ -161,7 +168,7 @@ class AppTheme {
         ),
       ),
       listTileTheme: ListTileThemeData(iconColor: p.inkSoft, textColor: p.ink),
-      progressIndicatorTheme: ProgressIndicatorThemeData(color: p.teal),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: p.brand),
     );
   }
 }

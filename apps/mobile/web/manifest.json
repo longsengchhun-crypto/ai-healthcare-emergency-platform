@@ -1,11 +1,11 @@
 {
-    "name": "health_response",
-    "short_name": "health_response",
+    "name": "HealthResponse",
+    "short_name": "HealthResponse",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#2563EB",
+    "theme_color": "#2563EB",
+    "description": "Find doctors, book visits, keep your health records and ask for emergency help.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

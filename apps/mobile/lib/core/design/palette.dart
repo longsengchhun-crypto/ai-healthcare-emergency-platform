@@ -11,9 +11,9 @@ class Palette extends ThemeExtension<Palette> {
     required this.ink,
     required this.inkSoft,
     required this.muted,
-    required this.teal,
-    required this.tealDeep,
-    required this.tealSoft,
+    required this.brand,
+    required this.brandDeep,
+    required this.brandSoft,
     required this.blue,
     required this.red,
     required this.redSoft,
@@ -23,16 +23,16 @@ class Palette extends ThemeExtension<Palette> {
     required this.amberSoft,
   });
 
-  final Color paper; // page background (warm, not pure white)
+  final Color paper; // page background (cool off-white)
   final Color surface; // raised surfaces
   final Color sand; // quiet fills
   final Color line; // hairlines
   final Color ink; // primary text / structure
   final Color inkSoft;
   final Color muted;
-  final Color teal;
-  final Color tealDeep;
-  final Color tealSoft;
+  final Color brand;
+  final Color brandDeep;
+  final Color brandSoft;
   final Color blue;
   final Color red;
   final Color redSoft;
@@ -42,37 +42,37 @@ class Palette extends ThemeExtension<Palette> {
   final Color amberSoft;
 
   static const light = Palette(
-    paper: Color(0xFFFAF8F4),
+    paper: Color(0xFFF4F7FC),
     surface: Color(0xFFFFFFFF),
-    sand: Color(0xFFF1EDE4),
-    line: Color(0xFFE5E0D4),
-    ink: Color(0xFF0D1B2A),
-    inkSoft: Color(0xFF3B4A5C),
-    muted: Color(0xFF6C7787),
-    teal: Color(0xFF0F7C80),
-    tealDeep: Color(0xFF0A5659),
-    tealSoft: Color(0xFFDCEEEE),
-    blue: Color(0xFF2F5FD0),
-    red: Color(0xFFD92D20),
-    redSoft: Color(0xFFFCE9E7),
-    green: Color(0xFF1E7A4F),
-    greenSoft: Color(0xFFE0F2E8),
-    amber: Color(0xFFA9650F),
-    amberSoft: Color(0xFFFBEFD9),
+    sand: Color(0xFFEBF0FA),
+    line: Color(0xFFE2E8F4),
+    ink: Color(0xFF111B33),
+    inkSoft: Color(0xFF3F4B66),
+    muted: Color(0xFF7480A0),
+    brand: Color(0xFF2563EB),
+    brandDeep: Color(0xFF1946B8),
+    brandSoft: Color(0xFFE4ECFD),
+    blue: Color(0xFF2563EB),
+    red: Color(0xFFE5392B),
+    redSoft: Color(0xFFFDEBE9),
+    green: Color(0xFF16915F),
+    greenSoft: Color(0xFFE0F5EB),
+    amber: Color(0xFFB86A07),
+    amberSoft: Color(0xFFFDF1DC),
   );
 
   static const dark = Palette(
-    paper: Color(0xFF0A1118),
-    surface: Color(0xFF121C27),
-    sand: Color(0xFF17232F),
-    line: Color(0xFF243444),
-    ink: Color(0xFFF2F5F8),
-    inkSoft: Color(0xFFC5CFDA),
-    muted: Color(0xFF8D9BAB),
-    teal: Color(0xFF4FC3C7),
-    tealDeep: Color(0xFF8AD9DB),
-    tealSoft: Color(0xFF123B3F),
-    blue: Color(0xFF7FA2F2),
+    paper: Color(0xFF0B1220),
+    surface: Color(0xFF131C2E),
+    sand: Color(0xFF1A2540),
+    line: Color(0xFF263250),
+    ink: Color(0xFFF1F4FB),
+    inkSoft: Color(0xFFC6CEE0),
+    muted: Color(0xFF8A96B4),
+    brand: Color(0xFF5B8CFF),
+    brandDeep: Color(0xFF9DBBFF),
+    brandSoft: Color(0xFF1B2C57),
+    blue: Color(0xFF5B8CFF),
     red: Color(0xFFFF6B5E),
     redSoft: Color(0xFF3B1814),
     green: Color(0xFF58C58E),
@@ -106,8 +106,8 @@ class Gap {
 
 class Radii {
   Radii._();
-  static const double sm = 10;
-  static const double md = 16;
-  static const double lg = 22;
+  static const double sm = 12;
+  static const double md = 18;
+  static const double lg = 24;
   static const double pill = 999;
 }

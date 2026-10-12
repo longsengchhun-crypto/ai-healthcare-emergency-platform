@@ -108,7 +108,7 @@ class SensorSettingsScreen extends ConsumerWidget {
                         '${s.settings.countdownSeconds}s',
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
-                          color: p.teal,
+                          color: p.brand,
                         ),
                       ),
                     ],
@@ -364,7 +364,7 @@ class PrivacyScreen extends ConsumerWidget {
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.verified_user_outlined, color: p.teal),
+                              Icon(Icons.verified_user_outlined, color: p.brand),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(

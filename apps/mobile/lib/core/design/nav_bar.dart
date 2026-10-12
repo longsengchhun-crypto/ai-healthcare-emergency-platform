@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../i18n/language.dart';
+import 'kit.dart';
 import 'palette.dart';
 
 class NavItem {
@@ -30,15 +31,20 @@ class AppNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = Palette.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: p.surface,
-        border: Border(top: BorderSide(color: p.line)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 72,
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+        height: 70,
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(Radii.lg + 4),
+          border: dark ? Border.all(color: p.line) : null,
+          boxShadow: softShadow(context, strength: 1.6),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(Radii.lg + 4),
           child: Row(
             children: [
               for (var i = 0; i < items.length; i++)
@@ -76,7 +82,7 @@ class _Item extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = Palette.of(context);
-    final color = selected ? p.ink : p.muted;
+    final color = selected ? p.brand : p.muted;
     return Semantics(
       button: true,
       selected: selected,
@@ -92,16 +98,16 @@ class _Item extends StatelessWidget {
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              width: selected ? 44 : 28,
-              height: 28,
+              width: selected ? 52 : 30,
+              height: 30,
               decoration: BoxDecoration(
-                color: selected ? p.tealSoft : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
+                color: selected ? p.brand : Colors.transparent,
+                borderRadius: BorderRadius.circular(15),
               ),
               child: Icon(
                 selected ? item.activeIcon : item.icon,
-                size: 22,
-                color: selected ? p.tealDeep : color,
+                size: 21,
+                color: selected ? Colors.white : color,
               ),
             ),
             const SizedBox(height: 3),
@@ -112,7 +118,7 @@ class _Item extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11.5,
                 height: 1.3,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 color: color,
               ),
             ),

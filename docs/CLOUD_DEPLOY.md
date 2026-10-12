@@ -14,6 +14,20 @@ One container (`Dockerfile.cloud`) serves everything on a single HTTPS address:
 > ~30–60 s to wake) and uploaded files are lost on every restart. The Neon database does **not** expire. Fine for team
 > testing, not for real patients.
 
+### Avoiding Render's "APPLICATION LOADING" page
+
+That page is Render's own wake-up screen; the app cannot change it, only avoid showing it. Two layers:
+
+1. **Built in:** while awake, the backend requests its own public URL every 9 minutes (`SelfKeepAlive`, uses the
+   `RENDER_EXTERNAL_URL` that Render sets). This keeps a running service from ever reaching the 15-minute idle limit.
+2. **External pinger (recommended, free):** the GitHub Actions `keepalive` workflow is *not* reliable for this — its
+   `*/10` schedule was observed running only every 3–7 hours. To wake a service that has already gone to sleep
+   (after a redeploy or restart), add a monitor at https://uptimerobot.com (free, 5-minute interval, HTTP(s)) for
+   `https://<your-service>.onrender.com/actuator/health/liveness`.
+
+A free instance has 750 hours/month, which covers one always-awake service. Render's paid "Starter" plan removes
+sleeping entirely.
+
 1. **Merge the code to `main`** (done for you: branch `main` exists on GitHub).
 2. Go to https://render.com → **Get started** → sign up with **GitHub**.
 3. **New → Blueprint** → choose repository `longsengchhun-crypto/ai-healthcare-emergency-platform` → branch `main`

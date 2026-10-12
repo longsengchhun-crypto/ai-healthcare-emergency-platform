@@ -43,14 +43,14 @@ class PersonAvatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        color: Color(0xFFDCEFEF),
+        color: Color(0xFFE4ECFD),
       ),
       child: Text(
         initialsOf(name),
         style: TextStyle(
           fontSize: size * 0.36,
           fontWeight: FontWeight.w700,
-          color: AppColors.teal,
+          color: AppColors.brand,
         ),
       ),
     );
@@ -93,7 +93,7 @@ class BannerImage extends StatelessWidget {
       child: const Icon(
         Icons.local_hospital_outlined,
         size: 40,
-        color: AppColors.teal,
+        color: AppColors.brand,
       ),
     );
     return ClipRRect(
@@ -123,7 +123,7 @@ class TagChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppColors.teal;
+    final c = color ?? AppColors.brand;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(

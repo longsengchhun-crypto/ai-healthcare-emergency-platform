@@ -81,15 +81,22 @@ class _AuthFrame extends StatelessWidget {
                           ),
                         ),
                       Container(
-                        width: 38,
-                        height: 38,
+                        width: 42,
+                        height: 42,
                         decoration: BoxDecoration(
-                          color: p.ink,
-                          borderRadius: BorderRadius.circular(12),
+                          color: p.brand,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: p.brand.withValues(alpha: 0.35),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
                         child: Icon(
                           Icons.favorite_rounded,
-                          color: p.paper,
+                          color: Colors.white,
                           size: 20,
                         ),
                       ),
@@ -100,8 +107,8 @@ class _AuthFrame extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
                             color: p.ink,
                           ),
                         ),
@@ -444,12 +451,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       color: _accepted ? p.ink : Colors.transparent,
                       borderRadius: BorderRadius.circular(7),
                       border: Border.all(
-                        color: _accepted ? p.ink : p.muted,
+                        color: _accepted ? p.brand : p.muted,
                         width: 1.6,
                       ),
                     ),
                     child: _accepted
-                        ? Icon(Icons.check_rounded, size: 17, color: p.paper)
+                        ? Icon(Icons.check_rounded, size: 17, color: Colors.white)
                         : null,
                   ),
                   const SizedBox(width: 12),
@@ -636,7 +643,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         ],
         if (_message != null) ...[
           const SizedBox(height: Gap.lg),
-          Notice(_message!, tone: _isError ? Tone.red : Tone.teal),
+          Notice(_message!, tone: _isError ? Tone.red : Tone.brand),
         ],
       ],
     ),

@@ -117,6 +117,9 @@ class DoctorRow extends StatelessWidget {
             child: Portrait(
               name: d['fullName'] as String,
               photoUrl: d['photoUrl'] as String?,
+              width: 88,
+              height: 104,
+              radius: 20,
             ),
           ),
           const SizedBox(width: 14),
@@ -129,8 +132,8 @@ class DoctorRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 16.5,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                     color: p.ink,
                     height: 1.4,
                   ),
@@ -142,14 +145,21 @@ class DoctorRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: p.muted, fontSize: 13),
                   ),
-                const SizedBox(height: 6),
-                Text(
-                  specialtyOf(context, d),
-                  style: TextStyle(
-                    color: p.tealDeep,
-                    fontWeight: FontWeight.w700,
-                    height: 1.4,
-                  ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    Pill(specialtyOf(context, d), tone: Tone.blue),
+                    if (d['yearsExperience'] != null)
+                      Pill(
+                        context.t(
+                          '${d['yearsExperience']} ឆ្នាំ',
+                          '${d['yearsExperience']} yrs',
+                        ),
+                        icon: Icons.workspace_premium_outlined,
+                      ),
+                  ],
                 ),
                 if (d['hospitalName'] != null)
                   Padding(
@@ -228,7 +238,10 @@ class DoctorTile extends StatelessWidget {
 // ------------------------------------------------------------------ discover
 
 class DiscoverScreen extends ConsumerStatefulWidget {
-  const DiscoverScreen({super.key});
+  const DiscoverScreen({super.key, this.initialSpecialty});
+
+  /// English specialty name (as stored on the doctor) to pre-select, e.g. from a home-screen shortcut.
+  final String? initialSpecialty;
 
   @override
   ConsumerState<DiscoverScreen> createState() => _DiscoverScreenState();
@@ -238,7 +251,15 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   final _controller = TextEditingController();
   String _query = '';
   int _tab = 0;
-  String? _specialty;
+  late String? _specialty = widget.initialSpecialty;
+
+  @override
+  void didUpdateWidget(covariant DiscoverScreen old) {
+    super.didUpdateWidget(old);
+    if (old.initialSpecialty != widget.initialSpecialty) {
+      setState(() => _specialty = widget.initialSpecialty);
+    }
+  }
 
   @override
   void dispose() {
@@ -424,15 +445,15 @@ class _FilterChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? p.ink : p.surface,
+            color: selected ? p.brand : p.surface,
             borderRadius: BorderRadius.circular(Radii.pill),
-            border: Border.all(color: selected ? p.ink : p.line),
+            border: Border.all(color: selected ? p.brand : p.line),
           ),
           child: Text(
             label,
             style: TextStyle(
               fontWeight: FontWeight.w700,
-              color: selected ? p.paper : p.inkSoft,
+              color: selected ? Colors.white : p.inkSoft,
               height: 1.3,
             ),
           ),
@@ -527,7 +548,7 @@ class _HospitalList extends ConsumerWidget {
                                 if (h['openingHours'] != null)
                                   Pill(
                                     h['openingHours'] as String,
-                                    tone: Tone.teal,
+                                    tone: Tone.brand,
                                     icon: Icons.schedule_rounded,
                                   ),
                               ],
@@ -693,7 +714,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
                 SliverAppBar(
                   expandedHeight: 330,
                   pinned: true,
-                  backgroundColor: p.paper,
+                  backgroundColor: p.surface,
                   leading: Padding(
                     padding: const EdgeInsets.all(8),
                     child: Tap(
@@ -713,12 +734,27 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
                       child: Builder(
                         builder: (context) {
                           final url = mediaUrl(d['photoUrl'] as String?);
+                          final fallback = Container(
+                            color: p.brandSoft,
+                            alignment: Alignment.center,
+                            child: Text(
+                              initialsOf(d['fullName'] as String),
+                              style: TextStyle(
+                                fontSize: 64,
+                                fontWeight: FontWeight.w700,
+                                color: p.brand,
+                              ),
+                            ),
+                          );
                           return url == null
-                              ? Container(color: p.tealSoft)
+                              ? fallback
                               : Image.network(
                                   url,
                                   fit: BoxFit.cover,
                                   alignment: Alignment.topCenter,
+                                  errorBuilder: (_, _, _) => fallback,
+                                  loadingBuilder: (_, child, progress) =>
+                                      progress == null ? child : fallback,
                                 );
                         },
                       ),
@@ -750,7 +786,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
                           Text(
                             specialtyOf(context, d),
                             style: TextStyle(
-                              color: p.tealDeep,
+                              color: p.brandDeep,
                               fontWeight: FontWeight.w800,
                               fontSize: 16,
                             ),
@@ -863,12 +899,12 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
                                     duration: const Duration(milliseconds: 160),
                                     width: 58,
                                     decoration: BoxDecoration(
-                                      color: sel ? p.ink : p.surface,
+                                      color: sel ? p.brand : p.surface,
                                       borderRadius: BorderRadius.circular(
                                         Radii.md,
                                       ),
                                       border: Border.all(
-                                        color: sel ? p.ink : p.line,
+                                        color: sel ? p.brand : p.line,
                                       ),
                                     ),
                                     child: Column(
@@ -880,7 +916,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: sel
-                                                ? p.paper.withValues(alpha: .8)
+                                                ? Colors.white.withValues(alpha: .8)
                                                 : p.muted,
                                           ),
                                         ),
@@ -889,7 +925,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
                                           style: TextStyle(
                                             fontSize: 20,
                                             fontWeight: FontWeight.w800,
-                                            color: sel ? p.paper : p.ink,
+                                            color: sel ? Colors.white : p.ink,
                                           ),
                                         ),
                                       ],
@@ -1140,7 +1176,7 @@ class HospitalDetailScreen extends ConsumerWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (final d in departments) Pill(d, tone: Tone.teal),
+                      for (final d in departments) Pill(d, tone: Tone.brand),
                     ],
                   ),
                 ],

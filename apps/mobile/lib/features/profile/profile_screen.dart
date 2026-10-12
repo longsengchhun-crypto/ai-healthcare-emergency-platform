@@ -84,7 +84,7 @@ class ProfileScreen extends ConsumerWidget {
                               : isPatient
                               ? context.t('អ្នកជំងឺ', 'Patient')
                               : context.t('បុគ្គលិក', 'Staff'),
-                          tone: Tone.teal,
+                          tone: Tone.brand,
                         ),
                       ],
                     ),
@@ -160,13 +160,13 @@ class ProfileScreen extends ConsumerWidget {
                         width: 38,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: p.tealSoft,
+                          color: p.brandSoft,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
                           Icons.translate_rounded,
                           size: 19,
-                          color: p.tealDeep,
+                          color: p.brandDeep,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -327,7 +327,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     'ព័ត៌មានទាំងអស់មិនចាំបាច់ត្រូវបំពេញទេ។ វាជួយអ្នកឆ្លើយតប និងគ្រូពេទ្យ ហើយចែករំលែកតាមដែលបានពន្យល់ក្នុង "ឯកជនភាព"។',
                     'Everything here is optional. It helps responders and clinicians and is shared only as explained in Privacy.',
                   ),
-                  tone: Tone.teal,
+                  tone: Tone.brand,
                 ),
                 const SizedBox(height: Gap.lg),
                 TextField(
@@ -403,17 +403,17 @@ class ContactsScreen extends ConsumerWidget {
           height: 54,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           decoration: BoxDecoration(
-            color: p.ink,
+            color: p.brand,
             borderRadius: BorderRadius.circular(Radii.pill),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.person_add_alt_1_rounded, color: p.paper, size: 20),
+              Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 20),
               const SizedBox(width: 8),
               Text(
                 context.t('បន្ថែមអ្នកទាក់ទង', 'Add contact'),
-                style: TextStyle(color: p.paper, fontWeight: FontWeight.w800),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
               ),
             ],
           ),

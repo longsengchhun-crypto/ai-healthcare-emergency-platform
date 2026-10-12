@@ -119,8 +119,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/discover',
-            pageBuilder: (c, s) =>
-                NoTransitionPage(child: const DiscoverScreen()),
+            pageBuilder: (c, s) => NoTransitionPage(
+              child: DiscoverScreen(
+                initialSpecialty: s.uri.queryParameters['specialty'],
+              ),
+            ),
           ),
           GoRoute(
             path: '/appointments',
@@ -227,17 +230,17 @@ class _Splash extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: p.ink,
+                color: p.brand,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Icon(Icons.favorite_rounded, color: p.paper, size: 32),
+              child: Icon(Icons.favorite_rounded, color: Colors.white, size: 32),
             ),
             const SizedBox(height: 18),
             SizedBox(
               width: 90,
               child: LinearProgressIndicator(
                 minHeight: 3,
-                color: p.teal,
+                color: p.brand,
                 backgroundColor: p.line,
               ),
             ),

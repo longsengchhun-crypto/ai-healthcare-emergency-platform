@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/design/kit.dart';
 import '../../core/design/kit_extra.dart';
 import '../../core/design/palette.dart';
+import '../../core/widgets/media.dart';
 import '../../core/i18n/language.dart';
 import '../appointments/appointments_screen.dart';
 import '../authentication/auth_controller.dart';
@@ -56,6 +57,12 @@ class HomeScreen extends ConsumerWidget {
         ? context.t('សួស្តីពេលរសៀល', 'Good afternoon')
         : context.t('សួស្តីពេលល្ងាច', 'Good evening');
 
+    // Specialties come from the doctors actually in the directory, so every shortcut leads somewhere.
+    final specialties = <String, Map<String, dynamic>>{};
+    for (final d in doctors) {
+      specialties.putIfAbsent(d['specialty'] as String, () => d);
+    }
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
@@ -75,60 +82,118 @@ class HomeScreen extends ConsumerWidget {
                 Gap.xxl,
               ),
               children: [
-                // ---- masthead
+                // ---- header
                 Row(
                   children: [
+                    PersonAvatar(name: user?.fullName ?? '?', size: 50),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        context.fmt('EEEE d MMMM', DateTime.now()),
-                        style: TextStyle(
-                          color: p.muted,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            greeting,
+                            style: TextStyle(
+                              color: p.muted,
+                              fontSize: 13.5,
+                              height: 1.4,
+                            ),
+                          ),
+                          Text(
+                            user?.fullName ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: p.ink,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w700,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     LanguageToggle(
                       isKhmer: context.isKhmer,
                       onChanged: (c) => languageController.set(c),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Tap(
                       onTap: () => context.push('/notifications'),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Badge(
-                          isLabelVisible: unread > 0,
-                          smallSize: 9,
-                          backgroundColor: p.red,
-                          child: Icon(
-                            Icons.notifications_none_rounded,
-                            color: p.ink,
-                            size: 26,
+                      child: Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: p.surface,
+                          shape: BoxShape.circle,
+                          boxShadow: softShadow(context),
+                        ),
+                        child: Center(
+                          child: Badge(
+                            isLabelVisible: unread > 0,
+                            smallSize: 9,
+                            backgroundColor: p.red,
+                            child: Icon(
+                              Icons.notifications_none_rounded,
+                              color: p.ink,
+                              size: 24,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: Gap.sm),
-                Text(
-                  '$greeting,',
-                  style: TextStyle(color: p.inkSoft, fontSize: 17, height: 1.4),
-                ),
-                Text(
-                  user?.fullName ?? '',
-                  style: Theme.of(context).textTheme.displaySmall,
-                ),
                 const SizedBox(height: Gap.xl),
 
+                // ---- search (leads to the directory)
+                if (isPatient) ...[
+                  Tap(
+                    onTap: () => context.go('/discover'),
+                    child: Container(
+                      height: 56,
+                      padding: const EdgeInsets.only(left: 18, right: 6),
+                      decoration: BoxDecoration(
+                        color: p.surface,
+                        borderRadius: BorderRadius.circular(Radii.pill),
+                        boxShadow: softShadow(context),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.search_rounded, color: p.muted),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              context.t(
+                                'ស្វែងរកគ្រូពេទ្យ ឬឯកទេស',
+                                'Search a doctor or specialty',
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: p.muted, fontSize: 14.5),
+                            ),
+                          ),
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: p.brand,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.tune_rounded,
+                              color: Colors.white,
+                              size: 21,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: Gap.xl),
+                ],
+
                 // ---- next appointment
-                SectionHeader(
-                  isPatient
-                      ? context.t('ការណាត់ជួបបន្ទាប់', 'Next appointment')
-                      : context.t('កាលវិភាគបន្ទាប់', 'Next on your schedule'),
-                  action: context.t('មើលទាំងអស់', 'See all'),
-                  onAction: () => context.go('/appointments'),
-                ),
                 _NextAppointment(
                   appointment: upcoming.isEmpty ? null : upcoming.first,
                   isPatient: isPatient,
@@ -136,17 +201,51 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(height: Gap.xl),
 
                 if (isPatient) ...[
-                  // ---- shortcuts
+                  // ---- specialties
+                  SectionHeader(
+                    context.t('ឯកទេស', 'Specialties'),
+                    action: context.t('ទាំងអស់', 'See all'),
+                    onAction: () => context.go('/discover'),
+                  ),
+                  SizedBox(
+                    height: 96,
+                    child: specialties.isEmpty
+                        ? ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              for (var i = 0; i < 4; i++)
+                                const Padding(
+                                  padding: EdgeInsets.only(right: 14),
+                                  child: Skeleton(
+                                    width: 72,
+                                    height: 90,
+                                    radius: 20,
+                                  ),
+                                ),
+                            ],
+                          )
+                        : ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              for (final e in specialties.entries)
+                                _SpecialtyChip(
+                                  icon: specialtyIcon(e.key),
+                                  label: specialtyOf(context, e.value),
+                                  onTap: () => context.go(
+                                    '/discover?specialty=${Uri.encodeQueryComponent(e.key)}',
+                                  ),
+                                ),
+                            ],
+                          ),
+                  ),
+                  const SizedBox(height: Gap.xl),
+
+                  // ---- quick access
                   Row(
                     children: [
                       _Shortcut(
-                        Icons.search_rounded,
-                        context.t('រកគ្រូពេទ្យ', 'Find a doctor'),
-                        () => context.go('/discover'),
-                      ),
-                      _Shortcut(
                         Icons.folder_open_rounded,
-                        context.t('កំណត់ត្រា', 'My records'),
+                        context.t('កំណត់ត្រា', 'Records'),
                         () => context.push('/records'),
                       ),
                       _Shortcut(
@@ -159,6 +258,11 @@ class HomeScreen extends ConsumerWidget {
                         context.t('ជំនួយ', 'Assistant'),
                         () => context.push('/assistant'),
                       ),
+                      _Shortcut(
+                        Icons.badge_outlined,
+                        context.t('អត្តសញ្ញាណ', 'Medical ID'),
+                        () => context.push('/medical-id'),
+                      ),
                     ],
                   ),
                   const SizedBox(height: Gap.xl),
@@ -167,85 +271,27 @@ class HomeScreen extends ConsumerWidget {
                   _EmergencyStrip(state: emergency),
                   const SizedBox(height: Gap.md),
                   const VitalsHomeCard(),
-                  const SizedBox(height: Gap.sm),
-                  Surface(
-                    onTap: () => context.push('/medical-id'),
-                    padding: const EdgeInsets.all(Gap.md),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: p.redSoft,
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                          child: Icon(Icons.badge_outlined, color: p.red),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                context.t('អត្តសញ្ញាណសុខភាព', 'Medical ID'),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              Text(
-                                context.t(
-                                  'ក្រុមឈាម ជំងឺអាលែហ្ស៊ី ថ្នាំ និងអ្នកត្រូវទាក់ទង',
-                                  'Blood group, allergies, medicines and who to call',
-                                ),
-                                style: TextStyle(
-                                  color: p.muted,
-                                  fontSize: 13,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(Icons.chevron_right_rounded, color: p.muted),
-                      ],
-                    ),
-                  ),
                   const SizedBox(height: Gap.xl),
 
                   // ---- doctors
                   SectionHeader(
-                    context.t('គ្រូពេទ្យណែនាំ', 'Doctors'),
-                    action: context.t('ទាំងអស់', 'All'),
+                    context.t('គ្រូពេទ្យណែនាំ', 'Recommended doctors'),
+                    action: context.t('ទាំងអស់', 'See all'),
                     onAction: () => context.go('/discover'),
                   ),
-                  SizedBox(
-                    height: 220,
-                    child: doctors.isEmpty
-                        ? ListView(
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              for (var i = 0; i < 3; i++)
-                                const Padding(
-                                  padding: EdgeInsets.only(right: 12),
-                                  child: Skeleton(
-                                    width: 132,
-                                    height: 200,
-                                    radius: 22,
-                                  ),
-                                ),
-                            ],
-                          )
-                        : ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: doctors.length > 8 ? 8 : doctors.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: 12),
-                            itemBuilder: (context, i) =>
-                                DoctorTile(doctor: doctors[i]),
-                          ),
-                  ),
-                  const SizedBox(height: Gap.xl),
+                  if (doctors.isEmpty)
+                    for (var i = 0; i < 2; i++)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: Gap.md),
+                        child: Skeleton(height: 112, radius: 24),
+                      )
+                  else
+                    for (final d in doctors.take(4))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: Gap.md),
+                        child: DoctorRow(doctor: d),
+                      ),
+                  const SizedBox(height: Gap.lg),
 
                   // ---- medicine timeline
                   SectionHeader(
@@ -257,7 +303,7 @@ class HomeScreen extends ConsumerWidget {
                       onTap: () => context.push('/medications'),
                       child: Row(
                         children: [
-                          Icon(Icons.add_alarm_rounded, color: p.teal),
+                          Icon(Icons.add_alarm_rounded, color: p.brand),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -284,17 +330,18 @@ class HomeScreen extends ConsumerWidget {
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               child: Row(
                                 children: [
-                                  SizedBox(
-                                    width: 56,
-                                    child: Text(
-                                      (todaysReminders[i]['timeOfDay']
-                                              as String)
-                                          .substring(0, 5),
-                                      style: TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w800,
-                                        color: p.ink,
-                                      ),
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    margin: const EdgeInsets.only(right: 12),
+                                    decoration: BoxDecoration(
+                                      color: p.brandSoft,
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Icon(
+                                      Icons.medication_liquid_rounded,
+                                      color: p.brand,
+                                      size: 22,
                                     ),
                                   ),
                                   Expanded(
@@ -305,10 +352,14 @@ class HomeScreen extends ConsumerWidget {
                                       ),
                                     ),
                                   ),
-                                  Icon(
-                                    Icons.alarm_rounded,
-                                    size: 18,
-                                    color: p.muted,
+                                  Text(
+                                    (todaysReminders[i]['timeOfDay'] as String)
+                                        .substring(0, 5),
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: p.brand,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -320,6 +371,58 @@ class HomeScreen extends ConsumerWidget {
                 ],
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SpecialtyChip extends StatelessWidget {
+  const _SpecialtyChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Palette.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(right: 14),
+      child: Tap(
+        onTap: onTap,
+        child: SizedBox(
+          width: 76,
+          child: Column(
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                decoration: BoxDecoration(
+                  color: p.surface,
+                  shape: BoxShape.circle,
+                  boxShadow: softShadow(context),
+                ),
+                child: Icon(icon, color: p.brand, size: 27),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: p.inkSoft,
+                  height: 1.35,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -345,20 +448,20 @@ class _Shortcut extends StatelessWidget {
               width: 58,
               height: 58,
               decoration: BoxDecoration(
-                color: p.tealSoft,
+                color: p.brandSoft,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Icon(icon, color: p.tealDeep, size: 26),
+              child: Icon(icon, color: p.brand, size: 26),
             ),
             const SizedBox(height: 8),
             Text(
               label,
               textAlign: TextAlign.center,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12.5,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: p.inkSoft,
                 height: 1.35,
               ),
@@ -370,6 +473,7 @@ class _Shortcut extends StatelessWidget {
   }
 }
 
+/// Blue hero card: the next visit at a glance, or an invitation to book one.
 class _NextAppointment extends StatelessWidget {
   const _NextAppointment({required this.appointment, required this.isPatient});
   final Map<String, dynamic>? appointment;
@@ -379,91 +483,219 @@ class _NextAppointment extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = Palette.of(context);
     final a = appointment;
-    if (a == null) {
-      return Surface(
-        onTap: () => context.go(isPatient ? '/discover' : '/appointments'),
-        child: Row(
-          children: [
-            Icon(Icons.event_available_rounded, color: p.teal, size: 28),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.t('មិនទាន់មានការណាត់ជួប', 'Nothing booked'),
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  Text(
-                    isPatient
-                        ? context.t(
-                            'ស្វែងរកគ្រូពេទ្យ ហើយណាត់ជួបបានភ្លាម។',
-                            'Find a doctor and book in a minute.',
-                          )
-                        : context.t('មិនមានសំណើថ្មី។', 'No new requests.'),
-                    style: TextStyle(color: p.muted, height: 1.45),
-                  ),
-                ],
-              ),
+    final decoration = BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [p.brand, Color.lerp(p.brand, p.brandDeep, 0.85)!],
+      ),
+      borderRadius: BorderRadius.circular(Radii.lg + 4),
+      boxShadow: [
+        BoxShadow(
+          color: p.brand.withValues(alpha: 0.30),
+          blurRadius: 28,
+          offset: const Offset(0, 14),
+        ),
+      ],
+    );
+    Widget chip(IconData icon, String text) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(Radii.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              height: 1.3,
             ),
-            Icon(Icons.chevron_right_rounded, color: p.muted),
-          ],
+          ),
+        ],
+      ),
+    );
+
+    if (a == null) {
+      return Tap(
+        onTap: () => context.go(isPatient ? '/discover' : '/appointments'),
+        child: Container(
+          padding: const EdgeInsets.all(Gap.xl),
+          decoration: decoration,
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.t('មិនទាន់មានការណាត់ជួប', 'No visits booked'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w700,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      isPatient
+                          ? context.t(
+                              'ស្វែងរកគ្រូពេទ្យ ហើយណាត់ជួបបានភ្លាម។',
+                              'Find a doctor and book in a minute.',
+                            )
+                          : context.t('មិនមានសំណើថ្មី។', 'No new requests.'),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        height: 1.5,
+                      ),
+                    ),
+                    if (isPatient) ...[
+                      const SizedBox(height: Gap.lg),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 11,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(Radii.pill),
+                        ),
+                        child: Text(
+                          context.t('ណាត់ជួបឥឡូវ', 'Book a visit'),
+                          style: TextStyle(
+                            color: p.brand,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: Gap.md),
+              Icon(
+                Icons.event_available_rounded,
+                size: 64,
+                color: Colors.white.withValues(alpha: 0.35),
+              ),
+            ],
+          ),
         ),
       );
     }
+
     final start = DateTime.parse(a['startsAt'] as String).toLocal();
     final name = isPatient
         ? a['doctorName'] as String
         : a['patientName'] as String;
+    final specialty = a['doctorSpecialty'] as String?;
     final confirmed = a['status'] == 'CONFIRMED';
-    return Surface(
+    return Tap(
       onTap: () => context.go('/appointments'),
-      child: Row(
-        children: [
-          DateBlock(
-            day: '${start.day}',
-            month: context.fmt('MMM', start),
-            highlight: true,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Container(
+        padding: const EdgeInsets.all(Gap.lg + 2),
+        decoration: decoration,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
                 Text(
-                  context.fmt('HH:mm', start),
+                  context.t('ការណាត់ជួបបន្ទាប់', 'Next appointment'),
                   style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: p.ink,
-                    height: 1.2,
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
                   ),
                 ),
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 6),
-                Pill(
-                  confirmed
-                      ? context.t('បានបញ្ជាក់', 'Confirmed')
-                      : context.t('កំពុងរង់ចាំ', 'Waiting for confirmation'),
-                  tone: confirmed ? Tone.green : Tone.blue,
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: confirmed
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(Radii.pill),
+                  ),
+                  child: Text(
+                    confirmed
+                        ? context.t('បានបញ្ជាក់', 'Confirmed')
+                        : context.t('កំពុងរង់ចាំ', 'Pending'),
+                    style: TextStyle(
+                      color: confirmed ? p.brand : Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      height: 1.4,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-          if (isPatient)
-            Portrait(
-              name: name,
-              photoUrl: a['doctorPhotoUrl'] as String?,
-              width: 62,
-              height: 74,
-              radius: 16,
+            const SizedBox(height: Gap.md),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          height: 1.4,
+                        ),
+                      ),
+                      if (specialty != null && isPatient)
+                        Text(
+                          specialty,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            height: 1.5,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (isPatient) ...[
+                  const SizedBox(width: Gap.md),
+                  Portrait(
+                    name: name,
+                    photoUrl: a['doctorPhotoUrl'] as String?,
+                    width: 64,
+                    height: 72,
+                    radius: 20,
+                  ),
+                ],
+              ],
             ),
-        ],
+            const SizedBox(height: Gap.lg),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                chip(
+                  Icons.calendar_today_rounded,
+                  context.fmt('EEE d MMM', start),
+                ),
+                chip(Icons.schedule_rounded, context.fmt('HH:mm', start)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -482,7 +714,7 @@ class _EmergencyStrip extends StatelessWidget {
         !(state.event!.isTerminal);
     return Surface(
       color: active ? p.redSoft : p.surface,
-      borderColor: active ? p.red.withValues(alpha: 0.4) : p.line,
+      borderColor: active ? p.red.withValues(alpha: 0.4) : null,
       onTap: () => context.go('/emergency'),
       child: Row(
         children: [

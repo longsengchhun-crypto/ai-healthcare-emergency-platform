@@ -569,7 +569,7 @@ class _Step extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = Palette.of(context);
-    final color = done ? (current ? p.red : p.teal) : p.line;
+    final color = done ? (current ? p.red : p.brand) : p.line;
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -590,7 +590,7 @@ class _Step extends StatelessWidget {
                 ),
                 if (!last)
                   Expanded(
-                    child: Container(width: 2, color: done ? p.teal : p.line),
+                    child: Container(width: 2, color: done ? p.brand : p.line),
                   ),
               ],
             ),

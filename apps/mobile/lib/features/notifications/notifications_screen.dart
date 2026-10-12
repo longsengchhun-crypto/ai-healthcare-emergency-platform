@@ -19,7 +19,7 @@ final notificationsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((
     return (Icons.emergency_rounded, Tone.red);
   if (c.startsWith('APPOINTMENT'))
     return (Icons.event_available_rounded, Tone.blue);
-  if (c.startsWith('MEDICATION')) return (Icons.medication_rounded, Tone.teal);
+  if (c.startsWith('MEDICATION')) return (Icons.medication_rounded, Tone.brand);
   return (Icons.notifications_rounded, Tone.neutral);
 }
 
@@ -70,7 +70,7 @@ class NotificationsScreen extends ConsumerWidget {
                 final created = DateTime.parse(n['createdAt'] as String)
                     .toLocal();
                 return Surface(
-                  color: read ? p.surface : p.tealSoft.withValues(alpha: 0.5),
+                  color: read ? p.surface : p.brandSoft.withValues(alpha: 0.5),
                   onTap: read
                       ? null
                       : () async {
@@ -98,7 +98,7 @@ class NotificationsScreen extends ConsumerWidget {
                           size: 21,
                           color: tone == Tone.red
                               ? p.red
-                              : (tone == Tone.blue ? p.blue : p.tealDeep),
+                              : (tone == Tone.blue ? p.blue : p.brandDeep),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -133,7 +133,7 @@ class NotificationsScreen extends ConsumerWidget {
                           height: 9,
                           margin: const EdgeInsets.only(top: 6),
                           decoration: BoxDecoration(
-                            color: p.teal,
+                            color: p.brand,
                             shape: BoxShape.circle,
                           ),
                         ),

@@ -137,7 +137,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     width: i == _page ? 26 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: i == _page ? p.ink : p.line,
+                      color: i == _page ? p.brand : p.line,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),

@@ -1,46 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="km">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="HealthResponse - find doctors, book visits, keep your medical records and ask for emergency help.">
+  <meta name="theme-color" content="#2563EB">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="health_response">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="HealthResponse">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>health_response</title>
+  <title>HealthResponse</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body { margin: 0; height: 100%; background: #F4F7FC; }
+    /* Shown while the Flutter engine downloads; removed on the first rendered frame. */
+    #boot {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 22px;
+      background: #F4F7FC; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: #111B33; transition: opacity .25s ease;
+    }
+    #boot .logo {
+      width: 76px; height: 76px; border-radius: 24px; background: linear-gradient(#2563EB, #1946B8);
+      display: grid; place-items: center; box-shadow: 0 14px 30px rgba(37, 99, 235, .35);
+    }
+    #boot .logo svg { width: 40px; height: 40px; }
+    #boot .name { font-size: 20px; font-weight: 700; letter-spacing: .2px; }
+    #boot .bar { width: 120px; height: 4px; border-radius: 4px; background: #E2E8F4; overflow: hidden; }
+    #boot .bar i {
+      display: block; width: 40%; height: 100%; border-radius: 4px; background: #2563EB;
+      animation: slide 1.1s ease-in-out infinite;
+    }
+    @keyframes slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(300%); } }
+    @media (prefers-color-scheme: dark) {
+      html, body, #boot { background: #0B1220; color: #F1F4FB; }
+      #boot .bar { background: #263250; }
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <div id="boot" role="status" aria-label="Loading">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C1 8.6 2.7 5 6.2 5c2.1 0 3.6 1.2 4.4 2.4h2.8C14.2 6.2 15.7 5 17.8 5c3.5 0 5.2 3.6 3.8 6.8C19.5 16.4 12 21 12 21z"/></svg>
+    </div>
+    <div class="name">HealthResponse</div>
+    <div class="bar"><i></i></div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var boot = document.getElementById('boot');
+      if (!boot) return;
+      boot.style.opacity = '0';
+      setTimeout(function () { boot.remove(); }, 300);
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

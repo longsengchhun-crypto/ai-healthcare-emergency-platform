@@ -394,9 +394,10 @@ class _Card extends StatelessWidget {
           if (active) ...[
             const SizedBox(height: 12),
             Divider(color: p.line),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 4,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 if (isDoctor && status == 'REQUESTED') ...[
                   _Action(
@@ -447,15 +448,26 @@ class _Action extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = Palette.of(context);
+    final (bg, fg) = danger
+        ? (p.redSoft, p.red)
+        : strong
+        ? (p.brand, Colors.white)
+        : (p.brandSoft, p.brandDeep);
     return Tap(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(Radii.pill),
+        ),
         child: Text(
           label,
           style: TextStyle(
-            fontWeight: strong ? FontWeight.w800 : FontWeight.w700,
-            color: danger ? p.red : (strong ? p.teal : p.inkSoft),
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: fg,
+            height: 1.4,
           ),
         ),
       ),

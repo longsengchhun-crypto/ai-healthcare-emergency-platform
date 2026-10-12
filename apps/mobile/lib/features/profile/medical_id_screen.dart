@@ -84,7 +84,7 @@ class MedicalIdScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(Gap.lg),
                   decoration: BoxDecoration(
-                    color: p.ink,
+                    color: p.brand,
                     borderRadius: BorderRadius.circular(Radii.lg),
                   ),
                   child: Row(
@@ -96,7 +96,7 @@ class MedicalIdScreen extends ConsumerWidget {
                             Text(
                               name,
                               style: TextStyle(
-                                color: p.paper,
+                                color: Colors.white,
                                 fontSize: 22,
                                 fontWeight: FontWeight.w800,
                                 height: 1.3,
@@ -106,7 +106,7 @@ class MedicalIdScreen extends ConsumerWidget {
                               Text(
                                 context.t('អាយុ $age ឆ្នាំ', 'Age $age'),
                                 style: TextStyle(
-                                  color: p.paper.withValues(alpha: 0.75),
+                                  color: Colors.white.withValues(alpha: 0.75),
                                 ),
                               ),
                           ],
@@ -117,7 +117,7 @@ class MedicalIdScreen extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: p.paper,
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Column(
@@ -194,7 +194,7 @@ class MedicalIdScreen extends ConsumerWidget {
                     onTap: () => context.push('/profile/contacts'),
                     child: Row(
                       children: [
-                        Icon(Icons.person_add_alt_1_rounded, color: p.teal),
+                        Icon(Icons.person_add_alt_1_rounded, color: p.brand),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -314,7 +314,7 @@ class _Block extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: tone ?? p.tealDeep),
+          Icon(icon, color: tone ?? p.brandDeep),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

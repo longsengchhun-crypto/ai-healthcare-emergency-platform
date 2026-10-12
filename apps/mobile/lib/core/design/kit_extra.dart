@@ -102,13 +102,13 @@ class Portrait extends StatelessWidget {
       width: width,
       height: height,
       alignment: Alignment.center,
-      color: p.tealSoft,
+      color: p.brandSoft,
       child: Text(
         initialsOf(name),
         style: TextStyle(
           fontSize: width * .3,
           fontWeight: FontWeight.w800,
-          color: p.tealDeep,
+          color: p.brandDeep,
         ),
       ),
     );
@@ -152,7 +152,7 @@ class DateBlock extends StatelessWidget {
       width: 54,
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: highlight ? p.ink : p.sand,
+        color: highlight ? p.brand : p.sand,
         borderRadius: BorderRadius.circular(Radii.md - 2),
       ),
       child: Column(
@@ -164,7 +164,7 @@ class DateBlock extends StatelessWidget {
               fontSize: 21,
               fontWeight: FontWeight.w800,
               height: 1.15,
-              color: highlight ? p.paper : p.ink,
+              color: highlight ? Colors.white : p.ink,
             ),
           ),
           Text(
@@ -172,7 +172,7 @@ class DateBlock extends StatelessWidget {
             style: TextStyle(
               fontSize: 11.5,
               height: 1.3,
-              color: highlight ? p.paper.withValues(alpha: 0.75) : p.muted,
+              color: highlight ? Colors.white.withValues(alpha: 0.75) : p.muted,
             ),
           ),
         ],
@@ -204,15 +204,15 @@ class TimeTile extends StatelessWidget {
         height: 46,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? p.ink : p.surface,
+          color: selected ? p.brand : p.surface,
           borderRadius: BorderRadius.circular(Radii.md - 2),
-          border: Border.all(color: selected ? p.ink : p.line),
+          border: Border.all(color: selected ? p.brand : p.line),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: selected ? p.paper : p.ink,
+            color: selected ? Colors.white : p.ink,
             height: 1.3,
           ),
         ),
@@ -273,7 +273,7 @@ class LanguageToggle extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: on ? p.ink : Colors.transparent,
+          color: on ? p.brand : Colors.transparent,
           borderRadius: BorderRadius.circular(Radii.pill),
         ),
         child: Text(
@@ -282,7 +282,7 @@ class LanguageToggle extends StatelessWidget {
             fontSize: 12.5,
             fontWeight: FontWeight.w800,
             height: 1.3,
-            color: on ? p.paper : p.muted,
+            color: on ? Colors.white : p.muted,
           ),
         ),
       ),
@@ -354,4 +354,20 @@ class SwitchRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Icon for a specialty name (English or Khmer label from the directory); falls back to a hospital cross.
+IconData specialtyIcon(String name) {
+  final n = name.toLowerCase();
+  bool has(List<String> keys) => keys.any(n.contains);
+  if (has(['cardio', 'heart', 'បេះដូង'])) return Icons.favorite_rounded;
+  if (has(['pediat', 'child', 'កុមារ'])) return Icons.child_care_rounded;
+  if (has(['ortho', 'bone', 'ឆ្អឹង'])) return Icons.accessibility_new_rounded;
+  if (has(['general', 'family', 'ទូទៅ'])) return Icons.medical_services_rounded;
+  if (has(['neuro', 'brain', 'ប្រសាទ'])) return Icons.psychology_rounded;
+  if (has(['derm', 'skin', 'ស្បែក'])) return Icons.spa_rounded;
+  if (has(['eye', 'ophthal', 'ភ្នែក'])) return Icons.visibility_rounded;
+  if (has(['dent', 'ធ្មេញ'])) return Icons.sentiment_satisfied_alt_rounded;
+  if (has(['gyn', 'obst', 'matern', 'ស្ត្រី'])) return Icons.pregnant_woman_rounded;
+  return Icons.local_hospital_rounded;
 }

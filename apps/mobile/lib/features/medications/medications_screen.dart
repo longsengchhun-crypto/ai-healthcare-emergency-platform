@@ -42,17 +42,17 @@ class MedicationsScreen extends ConsumerWidget {
           height: 54,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           decoration: BoxDecoration(
-            color: p.ink,
+            color: p.brand,
             borderRadius: BorderRadius.circular(Radii.pill),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_rounded, color: p.paper),
+              Icon(Icons.add_rounded, color: Colors.white),
               const SizedBox(width: 8),
               Text(
                 context.t('បន្ថែមថ្នាំ', 'Add medicine'),
-                style: TextStyle(color: p.paper, fontWeight: FontWeight.w800),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
               ),
             ],
           ),
@@ -80,7 +80,7 @@ class MedicationsScreen extends ConsumerWidget {
                     'កម្មវិធីនេះកត់ត្រាតែអ្វីដែលអ្នក ឬគ្រូពេទ្យបានបញ្ចូល ហើយមិនដែលណែនាំ ឬកែកម្រិតថ្នាំឡើយ។',
                     'This app only records what you or your clinician entered. It never recommends or changes doses.',
                   ),
-                  tone: Tone.teal,
+                  tone: Tone.brand,
                 ),
                 const SizedBox(height: Gap.lg),
                 if (items.isEmpty)
@@ -106,12 +106,12 @@ class MedicationsScreen extends ConsumerWidget {
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
-                                color: p.tealSoft,
+                                color: p.brandSoft,
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: Icon(
                                 Icons.medication_rounded,
-                                color: p.tealDeep,
+                                color: p.brandDeep,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -139,7 +139,7 @@ class MedicationsScreen extends ConsumerWidget {
                                   ? context.t('តាមវេជ្ជបញ្ជា', 'Prescribed')
                                   : context.t('អ្នកបញ្ចូល', 'Entered by you'),
                               tone: m['source'] == 'PRESCRIPTION'
-                                  ? Tone.teal
+                                  ? Tone.brand
                                   : Tone.neutral,
                             ),
                           ],
@@ -166,14 +166,14 @@ class MedicationsScreen extends ConsumerWidget {
                               children: [
                                 Icon(
                                   Icons.add_alarm_rounded,
-                                  color: p.teal,
+                                  color: p.brand,
                                   size: 20,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   context.t('បន្ថែមការរំលឹក', 'Add a reminder'),
                                   style: TextStyle(
-                                    color: p.teal,
+                                    color: p.brand,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -346,7 +346,7 @@ class _ReminderRow extends ConsumerWidget {
     final time = (reminder['timeOfDay'] as String).substring(0, 5);
     return Row(
       children: [
-        Icon(Icons.alarm_rounded, size: 20, color: active ? p.teal : p.muted),
+        Icon(Icons.alarm_rounded, size: 20, color: active ? p.brand : p.muted),
         const SizedBox(width: 10),
         Expanded(
           child: Text(

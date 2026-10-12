@@ -1,6 +1,7 @@
 // Renders the main screens with canned data to PNG so the design can be reviewed without a device.
 // Regenerate: GOLDEN=1 flutter test --update-goldens test/golden/screens_test.dart
 // Skipped by default: pixel output differs between operating systems, so it is a design aid, not a CI gate.
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -151,6 +152,27 @@ Future<void> _loadFonts() async {
       ),
     );
   await loader.load();
+  final jakarta = FontLoader('PlusJakartaSans')
+    ..addFont(
+      Future.value(
+        ByteData.sublistView(
+          File('assets/fonts/PlusJakartaSans.ttf').readAsBytesSync(),
+        ),
+      ),
+    );
+  await jakarta.load();
+  // Real icon glyphs instead of placeholder boxes (the SDK ships the font next to the Flutter binaries).
+  final flutterRoot = Platform.environment['FLUTTER_ROOT'];
+  final icons = flutterRoot == null
+      ? null
+      : File(
+          '$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+        );
+  if (icons != null && icons.existsSync()) {
+    final iconLoader = FontLoader('MaterialIcons')
+      ..addFont(Future.value(ByteData.sublistView(icons.readAsBytesSync())));
+    await iconLoader.load();
+  }
 }
 
 Widget _app(Widget home) => ProviderScope(
@@ -234,16 +256,6 @@ Widget _app(Widget home) => ProviderScope(
         },
       ],
     ),
-    medicationsProvider.overrideWith(
-      (ref) async => [
-        {
-          'id': 'm1',
-          'name': 'Amlodipine',
-          'dosage': '5 mg',
-          'source': 'PRESCRIPTION',
-        },
-      ],
-    ),
     vitalsSummaryProvider.overrideWith((ref) async => []),
     vitalsSeriesProvider.overrideWith((ref, type) async {
       final now = DateTime.now();
@@ -266,7 +278,6 @@ Widget _app(Widget home) => ProviderScope(
       ];
       return bp;
     }),
-    contactsProvider.overrideWith((ref) async => []),
     medicationsProvider.overrideWith(
       (ref) async => [
         {
@@ -320,7 +331,8 @@ void main() {
     t.view.physicalSize = const Size(390 * 2, 844 * 2);
     t.view.devicePixelRatio = 2;
     addTearDown(t.view.reset);
-    await languageController.set(english ? 'en' : 'km');
+    // Not awaited: the prefs write is a real platform future and would never complete inside the fake-async zone.
+    unawaited(languageController.set(english ? 'en' : 'km'));
     await t.pumpWidget(_app(w));
     await t.pump(const Duration(milliseconds: 600));
     await expectLater(

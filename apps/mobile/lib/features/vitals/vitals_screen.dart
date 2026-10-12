@@ -168,17 +168,17 @@ class _VitalsScreenState extends ConsumerState<VitalsScreen> {
           height: 54,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           decoration: BoxDecoration(
-            color: p.ink,
+            color: p.brand,
             borderRadius: BorderRadius.circular(Radii.pill),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_rounded, color: p.paper),
+              Icon(Icons.add_rounded, color: Colors.white),
               const SizedBox(width: 8),
               Text(
                 context.t('កត់ត្រាលទ្ធផល', 'Add reading'),
-                style: TextStyle(color: p.paper, fontWeight: FontWeight.w800),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
               ),
             ],
           ),
@@ -203,23 +203,23 @@ class _VitalsScreenState extends ConsumerState<VitalsScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: on ? p.ink : p.surface,
+                        color: on ? p.brand : p.surface,
                         borderRadius: BorderRadius.circular(Radii.pill),
-                        border: Border.all(color: on ? p.ink : p.line),
+                        border: Border.all(color: on ? p.brand : p.line),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             vitalIcon(t),
                             size: 17,
-                            color: on ? p.paper : p.inkSoft,
+                            color: on ? Colors.white : p.inkSoft,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             vitalName(context, t),
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
-                              color: on ? p.paper : p.ink,
+                              color: on ? Colors.white : p.ink,
                             ),
                           ),
                         ],
@@ -323,7 +323,7 @@ class _VitalsScreenState extends ConsumerState<VitalsScreen> {
                                 values: items.reversed.toList(),
                                 type: _type,
                                 line: p.ink,
-                                second: p.teal,
+                                second: p.brand,
                                 band: p.greenSoft,
                                 grid: p.line,
                                 dot: p.ink,
@@ -676,14 +676,14 @@ class _AddReadingSheetState extends ConsumerState<_AddReadingSheet> {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Row(
                   children: [
-                    Icon(Icons.schedule_rounded, size: 19, color: p.teal),
+                    Icon(Icons.schedule_rounded, size: 19, color: p.brand),
                     const SizedBox(width: 8),
                     Text(
                       _when == null
                           ? context.t('ពេលនេះ · ប្ដូរម៉ោង', 'Now · change time')
                           : DateFormat('d MMM yyyy · HH:mm').format(_when!),
                       style: TextStyle(
-                        color: p.teal,
+                        color: p.brand,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -844,10 +844,10 @@ class VitalsHomeCard extends ConsumerWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: p.tealSoft,
+              color: p.brandSoft,
               borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(Icons.monitor_heart_rounded, color: p.tealDeep),
+            child: Icon(Icons.monitor_heart_rounded, color: p.brandDeep),
           ),
           const SizedBox(width: 12),
           Expanded(

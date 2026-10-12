@@ -81,17 +81,17 @@ class RecordsScreen extends ConsumerWidget {
           height: 54,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           decoration: BoxDecoration(
-            color: p.ink,
+            color: p.brand,
             borderRadius: BorderRadius.circular(Radii.pill),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_rounded, color: p.paper),
+              Icon(Icons.add_rounded, color: Colors.white),
               const SizedBox(width: 8),
               Text(
                 context.t('បន្ថែមកំណត់ត្រា', 'Add note'),
-                style: TextStyle(color: p.paper, fontWeight: FontWeight.w800),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
               ),
             ],
           ),
@@ -136,12 +136,12 @@ class RecordsScreen extends ConsumerWidget {
                             width: 46,
                             height: 46,
                             decoration: BoxDecoration(
-                              color: clin ? p.tealSoft : p.sand,
+                              color: clin ? p.brandSoft : p.sand,
                               borderRadius: BorderRadius.circular(14),
                             ),
                             child: Icon(
                               icon,
-                              color: clin ? p.tealDeep : p.inkSoft,
+                              color: clin ? p.brandDeep : p.inkSoft,
                             ),
                           ),
                           const SizedBox(width: 14),
@@ -176,7 +176,7 @@ class RecordsScreen extends ConsumerWidget {
                                               'From clinician',
                                             )
                                           : context.t('ដោយអ្នក', 'By you'),
-                                      tone: clin ? Tone.teal : Tone.neutral,
+                                      tone: clin ? Tone.brand : Tone.neutral,
                                     ),
                                     if (docs > 0)
                                       Pill(
@@ -240,7 +240,7 @@ class RecordsScreen extends ConsumerWidget {
                           'កំណត់ចំណាំរបស់អ្នកត្រូវបានសម្គាល់ថាជាព័ត៌មានដែលអ្នកបញ្ចូលខ្លួនឯង ហើយដាច់ដោយឡែកពីកំណត់ត្រាគ្រូពេទ្យ។',
                           'Your notes are labelled as patient-entered and kept separate from clinician records.',
                         ),
-                  tone: Tone.teal,
+                  tone: Tone.brand,
                 ),
                 const SizedBox(height: Gap.md),
                 if (clinician) ...[
@@ -358,10 +358,10 @@ class RecordDetailScreen extends ConsumerWidget {
                       width: 52,
                       height: 52,
                       decoration: BoxDecoration(
-                        color: clin ? p.tealSoft : p.sand,
+                        color: clin ? p.brandSoft : p.sand,
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Icon(icon, color: clin ? p.tealDeep : p.inkSoft),
+                      child: Icon(icon, color: clin ? p.brandDeep : p.inkSoft),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -382,7 +382,7 @@ class RecordDetailScreen extends ConsumerWidget {
                       clin
                           ? context.t('ពីគ្រូពេទ្យ', 'From clinician')
                           : context.t('ដោយអ្នកជំងឺ', 'By patient'),
-                      tone: clin ? Tone.teal : Tone.neutral,
+                      tone: clin ? Tone.brand : Tone.neutral,
                     ),
                     Pill(
                       context.fmt(
@@ -450,7 +450,7 @@ class RecordDetailScreen extends ConsumerWidget {
                               (d['contentType'] as String).contains('pdf')
                                   ? Icons.picture_as_pdf_rounded
                                   : Icons.image_rounded,
-                              color: p.teal,
+                              color: p.brand,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
