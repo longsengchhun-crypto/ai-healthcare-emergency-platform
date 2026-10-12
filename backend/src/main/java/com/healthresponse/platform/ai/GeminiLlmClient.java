@@ -38,6 +38,10 @@ public class GeminiLlmClient implements LlmClient {
     private static final Pattern RETRY_DELAY = Pattern.compile("\"retryDelay\"\\s*:\\s*\"(\\d+)(?:\\.\\d+)?s\"");
     public static final String DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com";
     private static final long MAX_BLOCK_MS = 24L * 3600_000;
+    /** Upper bound for one whole call, whatever AI_TIMEOUT_SECONDS says (the app gives up at 35 s). */
+    private static final Duration MAX_BUDGET = Duration.ofSeconds(15);
+    /** 0 = thinkingLevel minimal, 1 = thinkingBudget 0, 2 = no thinking option (older/other models reject it). */
+    private volatile int thinkingMode = 0;
 
     private final HttpClient http;
     private final String apiKey;
@@ -51,7 +55,7 @@ public class GeminiLlmClient implements LlmClient {
     public GeminiLlmClient(String apiKey, String model, Duration timeout, int maxRetries, String baseUrlOrNull) {
         this.apiKey = apiKey;
         this.models = Arrays.stream(model.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
-        this.timeout = timeout;
+        this.timeout = timeout.compareTo(MAX_BUDGET) > 0 ? MAX_BUDGET : timeout;
         this.maxRetries = Math.max(0, maxRetries);
         this.baseUrl = baseUrlOrNull == null || baseUrlOrNull.isBlank() ? DEFAULT_BASE_URL
                 : baseUrlOrNull.replaceAll("/+$", "");
@@ -60,7 +64,6 @@ public class GeminiLlmClient implements LlmClient {
 
     @Override
     public String complete(Request r) {
-        String payload = buildBody(r);
         LlmException last = null;
         long now = System.currentTimeMillis();
         // `timeout` is the budget for the WHOLE call (all models and retries): a user waiting on a spinner is
@@ -74,7 +77,7 @@ public class GeminiLlmClient implements LlmClient {
                 continue;
             }
             try {
-                return callModel(model, payload, deadline);
+                return callModel(model, r, deadline);
             } catch (ModelUnusable e) {
                 blockedUntil.put(model, System.currentTimeMillis() + e.blockMs);
                 last = e;
@@ -95,7 +98,7 @@ public class GeminiLlmClient implements LlmClient {
         }
     }
 
-    private String callModel(String model, String payload, long deadline) {
+    private String callModel(String model, Request r, long deadline) {
         URI uri = URI.create(baseUrl + "/v1beta/models/" + model + ":generateContent");
         LlmException last = new LlmException(Kind.UNAVAILABLE, "AI provider call failed");
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
@@ -110,6 +113,7 @@ public class GeminiLlmClient implements LlmClient {
                 }
             }
             try {
+                String payload = buildBody(r);
                 HttpRequest req = HttpRequest.newBuilder(uri).timeout(Duration.ofMillis(Math.max(200, deadline - System.currentTimeMillis())))
                         .header("content-type", "application/json")
                         .header("x-goog-api-key", apiKey)
@@ -117,6 +121,12 @@ public class GeminiLlmClient implements LlmClient {
                 HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
                 int code = res.statusCode();
                 if (code == 200) return extractText(res.body());
+                if (code == 400 && thinkingMode < 2 && res.body() != null
+                        && res.body().toLowerCase().contains("thinking")) {
+                    thinkingMode++; // this model family rejects the option: step down and retry at once
+                    attempt--;
+                    continue;
+                }
                 last = mapError(code, res.body());
                 LOG.warn("AI provider (gemini) HTTP {}", code);
                 if (code < 500) throw last; // 4xx are not retried
@@ -149,6 +159,9 @@ public class GeminiLlmClient implements LlmClient {
         cfg.put("temperature", 0.2);
         // Gemini 2.5+ "thinking" tokens count against this limit, so leave generous room for the answer itself.
         cfg.put("maxOutputTokens", Math.max(r.maxTokens(), 8192));
+        // Triage/summaries need no long reasoning; thinking is the main cause of 10 s+ answers on the free tier.
+        if (thinkingMode == 0) cfg.putObject("thinkingConfig").put("thinkingLevel", "minimal");
+        else if (thinkingMode == 1) cfg.putObject("thinkingConfig").put("thinkingBudget", 0);
         return body.toString();
     }
 
